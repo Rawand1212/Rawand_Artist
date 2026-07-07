@@ -11,15 +11,22 @@ const firebaseConfig = {
 let app, auth, db, storage;
 
 function initFirebase() {
-  if (typeof firebase === "undefined") {
-    console.warn("Firebase SDK not loaded");
+  try {
+    if (typeof firebase === "undefined") {
+      console.warn("Firebase SDK not loaded");
+      return false;
+    }
+    if (!app) {
+      app = firebase.apps.length
+        ? firebase.app()
+        : firebase.initializeApp(firebaseConfig);
+      auth = firebase.auth();
+      if (typeof firebase.firestore === "function") db = firebase.firestore();
+      if (typeof firebase.storage === "function") storage = firebase.storage();
+    }
+    return !!auth;
+  } catch (err) {
+    console.error("Firebase init failed:", err);
     return false;
   }
-  if (!app) {
-    app = firebase.initializeApp(firebaseConfig);
-    if (firebase.auth) auth = firebase.auth();
-    if (firebase.firestore) db = firebase.firestore();
-    if (firebase.storage) storage = firebase.storage();
-  }
-  return !!auth;
 }

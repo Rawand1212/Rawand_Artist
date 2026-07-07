@@ -15,14 +15,15 @@
       <form id="loginForm">
         <div class="form-group">
           <label for="email">Email</label>
-          <input type="email" id="email" class="form-input" required placeholder="admin@example.com">
+          <input type="email" id="email" class="form-input" required placeholder="your@gmail.com" autocomplete="email">
         </div>
         <div class="form-group">
           <label for="password">Password</label>
-          <input type="password" id="password" class="form-input" required placeholder="••••••••">
+          <input type="password" id="password" class="form-input" required placeholder="Your Firebase password" autocomplete="current-password">
         </div>
         <div class="form-error" id="loginError" style="display:none"></div>
-        <button type="submit" class="btn btn-primary" style="margin-top:0.5rem">Sign In</button>
+        <div class="form-error" id="startupError" style="display:none;background:rgba(124,58,237,0.1);border:1px solid var(--accent);padding:0.75rem;border-radius:8px;margin-bottom:1rem"></div>
+        <button type="submit" class="btn btn-primary" id="loginBtn" style="margin-top:0.5rem">Sign In</button>
       </form>
       <p style="text-align:center;margin-top:1.5rem;font-size:0.85rem;color:var(--text-muted)">
         <a href="../index.html">← Back to Store</a>
@@ -32,41 +33,71 @@
 
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
   <script src="../assets/js/config.js"></script>
   <script src="../firebase/config.js"></script>
   <script src="../assets/js/admin/auth.js"></script>
   <script>
-    initFirebase();
-    AdminAuth.init();
-
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
+    (function () {
       const errorEl = document.getElementById("loginError");
-      errorEl.style.display = "none";
-      const btn = e.target.querySelector("button");
-      btn.disabled = true;
-      btn.textContent = "Signing in...";
-      try {
-        await AdminAuth.login(
-          document.getElementById("email").value,
-          document.getElementById("password").value
-        );
-      } catch (err) {
-        const messages = {
-          "auth/invalid-credential": "Wrong email or password. Check Firebase → Authentication → Users.",
-          "auth/user-not-found": "No account with this email. Add the user in Firebase Console first.",
-          "auth/wrong-password": "Incorrect password.",
-          "auth/invalid-email": "Invalid email address.",
-          "auth/too-many-requests": "Too many attempts. Wait a few minutes and try again.",
-          "auth/operation-not-allowed": "Email/Password sign-in is not enabled. Enable it in Firebase → Authentication → Sign-in method.",
-          "auth/unauthorized-domain": "This website is not authorized. Add rawand1212.github.io in Firebase → Authentication → Settings → Authorized domains."
-        };
-        errorEl.textContent = messages[err.code] || err.message;
-        errorEl.style.display = "block";
-        btn.disabled = false;
-        btn.textContent = "Sign In";
+      const startupEl = document.getElementById("startupError");
+      const form = document.getElementById("loginForm");
+      const btn = document.getElementById("loginBtn");
+
+      function showError(el, msg) {
+        el.textContent = msg;
+        el.style.display = "block";
       }
-    });
+
+      if (typeof firebase === "undefined") {
+        showError(startupEl, "Firebase failed to load. Check your internet connection and refresh.");
+        btn.disabled = true;
+        return;
+      }
+
+      if (!AdminAuth.init()) {
+        showError(startupEl, "Firebase could not start. Please refresh the page.");
+        btn.disabled = true;
+        return;
+      }
+
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        errorEl.style.display = "none";
+
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+
+        if (!email || !password) {
+          showError(errorEl, "Please enter email and password.");
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Signing in...";
+
+        try {
+          await AdminAuth.login(email, password);
+          btn.textContent = "Success! Redirecting...";
+          window.location.replace("dashboard.html");
+        } catch (err) {
+          const messages = {
+            "auth/invalid-credential": "Wrong email or password.",
+            "auth/user-not-found": "No account with this email. Create it in Firebase → Authentication → Users.",
+            "auth/wrong-password": "Incorrect password.",
+            "auth/invalid-email": "Invalid email address.",
+            "auth/too-many-requests": "Too many attempts. Wait a few minutes.",
+            "auth/operation-not-allowed": "Enable Email/Password in Firebase → Authentication → Sign-in method.",
+            "auth/unauthorized-domain": "Add rawand1212.github.io to Firebase → Authentication → Authorized domains.",
+            "auth/not-initialized": "Firebase Auth not loaded. Refresh the page."
+          };
+          showError(errorEl, messages[err.code] || err.message || "Login failed. Try again.");
+          btn.disabled = false;
+          btn.textContent = "Sign In";
+        }
+      });
+    })();
   </script>
 </body>
 </html>
