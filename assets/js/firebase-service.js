@@ -1,18 +1,25 @@
 const FirebaseService = {
+  _ensureDb() {
+    if (!initFirebase() || !db) {
+      throw new Error("Database not connected. Create Firestore in Firebase Console.");
+    }
+  },
+
   async getCategories() {
     if (STORE_CONFIG.demoMode || !initFirebase()) {
       return DEMO_CATEGORIES;
     }
-    const snap = await db.collection("categories").orderBy("name").get();
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    this._ensureDb();
+    const snap = await db.collection("categories").get();
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   },
 
   async getProducts(filters = {}) {
     if (STORE_CONFIG.demoMode || !initFirebase()) {
       let products = [...DEMO_PRODUCTS];
-      if (filters.categoryId) {
-        products = products.filter((p) => p.categoryId === filters.categoryId);
-      }
+      if (filters.categoryId) products = products.filter((p) => p.categoryId === filters.categoryId);
       if (filters.featured) products = products.filter((p) => p.featured);
       if (filters.isNew) products = products.filter((p) => p.isNew);
       if (filters.search) {
@@ -27,12 +34,13 @@ const FirebaseService = {
       return products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     }
 
+    this._ensureDb();
     let query = db.collection("products");
     if (filters.categoryId) query = query.where("categoryId", "==", filters.categoryId);
     if (filters.featured) query = query.where("featured", "==", true);
     if (filters.isNew) query = query.where("isNew", "==", true);
 
-    const snap = await query.orderBy("createdAt", "desc").get();
+    const snap = await query.get();
     let products = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     if (filters.search) {
@@ -43,6 +51,13 @@ const FirebaseService = {
           p.description.toLowerCase().includes(q)
       );
     }
+
+    products.sort((a, b) => {
+      const ta = a.createdAt?.toMillis?.() || a.createdAt || 0;
+      const tb = b.createdAt?.toMillis?.() || b.createdAt || 0;
+      return tb - ta;
+    });
+
     return products;
   },
 
@@ -50,6 +65,7 @@ const FirebaseService = {
     if (STORE_CONFIG.demoMode || !initFirebase()) {
       return DEMO_PRODUCTS.find((p) => p.id === id) || null;
     }
+    this._ensureDb();
     const doc = await db.collection("products").doc(id).get();
     return doc.exists ? { id: doc.id, ...doc.data() } : null;
   },
@@ -59,8 +75,8 @@ const FirebaseService = {
     return all.filter((p) => p.id !== product.id).slice(0, limit);
   },
 
-  // Admin operations
   async addProduct(data) {
+    this._ensureDb();
     const doc = await db.collection("products").add({
       ...data,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -69,27 +85,33 @@ const FirebaseService = {
   },
 
   async updateProduct(id, data) {
+    this._ensureDb();
     await db.collection("products").doc(id).update(data);
   },
 
   async deleteProduct(id) {
+    this._ensureDb();
     await db.collection("products").doc(id).delete();
   },
 
   async addCategory(data) {
+    this._ensureDb();
     const doc = await db.collection("categories").add(data);
     return doc.id;
   },
 
   async updateCategory(id, data) {
+    this._ensureDb();
     await db.collection("categories").doc(id).update(data);
   },
 
   async deleteCategory(id) {
+    this._ensureDb();
     await db.collection("categories").doc(id).delete();
   },
 
   async uploadImage(file, path) {
+    if (!storage) throw new Error("Storage not connected. Enable Firebase Storage in Console.");
     const compressed = await ImageUtils.compress(file);
     const ref = storage.ref(path);
     await ref.put(compressed);
@@ -105,6 +127,7 @@ const FirebaseService = {
         lowStock: DEMO_PRODUCTS.filter((p) => p.stock <= 3).length
       };
     }
+    this._ensureDb();
     const [products, categories] = await Promise.all([
       db.collection("products").get(),
       db.collection("categories").get()

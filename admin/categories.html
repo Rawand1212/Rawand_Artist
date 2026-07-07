@@ -47,24 +47,28 @@
     }
 
     async function loadCategories() {
-      categories = await FirebaseService.getCategories();
       const tbody = document.getElementById("categoriesTable");
+      try {
+        categories = await FirebaseService.getCategories();
 
-      if (!categories.length) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted)">No categories yet.</td></tr>`;
-        return;
+        if (!categories.length) {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted)">No categories yet. Click "+ Add Category" to create one.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = categories.map((c) => `
+          <tr>
+            <td style="font-size:1.5rem">${c.icon || "📁"}</td>
+            <td>${c.name}</td>
+            <td>${c.slug || slugify(c.name)}</td>
+            <td class="actions">
+              <button class="btn btn-secondary btn-sm" onclick="editCategory('${c.id}')">Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="deleteCategory('${c.id}')">Delete</button>
+            </td>
+          </tr>`).join("");
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--danger)">${AdminUI.formatError(err)}</td></tr>`;
       }
-
-      tbody.innerHTML = categories.map((c) => `
-        <tr>
-          <td style="font-size:1.5rem">${c.icon || "📁"}</td>
-          <td>${c.name}</td>
-          <td>${c.slug || slugify(c.name)}</td>
-          <td class="actions">
-            <button class="btn btn-secondary btn-sm" onclick="editCategory('${c.id}')">Edit</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteCategory('${c.id}')">Delete</button>
-          </td>
-        </tr>`).join("");
     }
 
     function categoryFormHtml(cat = {}) {
@@ -107,13 +111,13 @@
 
     window.deleteCategory = async (id) => {
       if (!confirm("Delete this category?")) return;
-      if (STORE_CONFIG.demoMode) {
-        AdminUI.showToast("Disable demo mode to delete", true);
-        return;
+      try {
+        await FirebaseService.deleteCategory(id);
+        AdminUI.showToast("Category deleted");
+        loadCategories();
+      } catch (err) {
+        AdminUI.showToast(AdminUI.formatError(err), true);
       }
-      await FirebaseService.deleteCategory(id);
-      AdminUI.showToast("Category deleted");
-      loadCategories();
     };
 
     document.getElementById("addCategoryBtn").addEventListener("click", () => openCategoryModal());

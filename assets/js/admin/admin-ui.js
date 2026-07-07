@@ -31,7 +31,19 @@ const AdminUI = {
     toast.className = `toast${isError ? " toast-error" : ""}`;
     toast.textContent = message;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    setTimeout(() => toast.remove(), 5000);
+  },
+
+  formatError(err) {
+    const code = err?.code || "";
+    const messages = {
+      "permission-denied": "Permission denied. Update Firestore rules in Firebase Console (see Settings page).",
+      "unauthenticated": "You are not logged in. Please log in again.",
+      "not-found": "Database not found. Create Firestore in Firebase Console.",
+      "failed-precondition": "Firestore index required. Try again or check Firebase Console.",
+      "storage/unauthorized": "Storage permission denied. Update Storage rules in Firebase Console."
+    };
+    return messages[code] || err?.message || "Something went wrong. Try again.";
   },
 
   openModal(title, bodyHtml, onSave) {
@@ -62,7 +74,7 @@ const AdminUI = {
         await onSave(overlay);
         close();
       } catch (err) {
-        AdminUI.showToast(err.message || "Save failed", true);
+        AdminUI.showToast(AdminUI.formatError(err), true);
         btn.disabled = false;
         btn.textContent = "Save";
       }
