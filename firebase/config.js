@@ -1,16 +1,13 @@
-// Replace with your Firebase project credentials from:
-// https://console.firebase.google.com → Project Settings → Your apps → Web app
-
+// Firebase configuration for Rawand Artist
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCQE63GJfN-8SKZCsD29v4g_lqHpSgUk2g",
+  authDomain: "rawand-artist.firebaseapp.com",
+  projectId: "rawand-artist",
+  storageBucket: "rawand-artist.firebasestorage.app",
+  messagingSenderId: "616694982219",
+  appId: "1:616694982219:web:af9367d0a264fa8279cfce"
 };
 
-// Initialize Firebase (loaded via CDN in HTML pages)
 let app, auth, db, storage;
 
 function initFirebase() {

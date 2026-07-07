@@ -5,5 +5,5 @@ const STORE_CONFIG = {
   currency: "USD",
   currencySymbol: "$",
   itemsPerPage: 12,
-  demoMode: true // Set false after Firebase is configured
+  demoMode: false // Set false after Firebase is configured
 };
