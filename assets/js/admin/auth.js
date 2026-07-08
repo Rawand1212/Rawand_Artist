@@ -1,18 +1,30 @@
 const AdminAuth = {
   _ready: false,
 
+  _handleAuthState(user) {
+    const isLoginPage = window.location.pathname.includes("login.html");
+
+    if (user && isLoginPage) {
+      window.location.replace("dashboard.html");
+      return;
+    }
+
+    if (!user && !isLoginPage) {
+      if (window.__loginInProgress) return;
+      setTimeout(() => {
+        if (!auth?.currentUser && !window.__loginInProgress) {
+          window.location.replace("login.html");
+        }
+      }, 800);
+    }
+  },
+
   init() {
     if (!initFirebase()) return false;
 
     auth.onAuthStateChanged((user) => {
       this._ready = true;
-      const isLoginPage = window.location.pathname.includes("login.html");
-
-      if (user && isLoginPage) {
-        window.location.replace("dashboard.html");
-      } else if (!user && !isLoginPage) {
-        window.location.replace("login.html");
-      }
+      this._handleAuthState(user);
     });
 
     return true;
