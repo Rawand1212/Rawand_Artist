@@ -4,18 +4,35 @@ const AdminAuth = {
   init() {
     if (!initFirebase()) return false;
 
-    auth.onAuthStateChanged((user) => {
+    auth.authStateReady().then(() => {
       this._ready = true;
-      const isLoginPage = window.location.pathname.includes("login.html");
+      this._handleAuthState(auth.currentUser);
+    });
 
-      if (user && isLoginPage) {
-        window.location.replace("dashboard.html");
-      } else if (!user && !isLoginPage) {
-        window.location.replace("login.html");
-      }
+    auth.onAuthStateChanged((user) => {
+      if (!this._ready) return;
+      this._handleAuthState(user);
     });
 
     return true;
+  },
+
+  _handleAuthState(user) {
+    const isLoginPage = window.location.pathname.includes("login.html");
+
+    if (user && isLoginPage) {
+      window.location.replace("dashboard.html");
+    } else if (!user && !isLoginPage) {
+      window.location.replace("login.html");
+    }
+  },
+
+  whenReady() {
+    if (!auth) return Promise.resolve(null);
+    return auth.authStateReady().then(() => {
+      this._ready = true;
+      return auth.currentUser;
+    });
   },
 
   async login(email, password) {

@@ -58,7 +58,7 @@
       try {
         [products, categories] = await Promise.all([
           FirebaseService.getProducts(),
-          FirebaseService.getCategories()
+          FirebaseService.getCategories({ strict: true })
         ]);
 
         if (!products.length) {
@@ -169,7 +169,11 @@
     };
 
     document.getElementById("addProductBtn").addEventListener("click", () => openProductModal());
-    loadProducts();
+    AdminAuth.whenReady().then((user) => {
+      if (user) loadProducts();
+      else document.getElementById("productsTable").innerHTML =
+        `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--danger)">Please log in to manage products.</td></tr>`;
+    });
   </script>
 </body>
 </html>

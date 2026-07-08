@@ -13,6 +13,7 @@
         <h1>Categories</h1>
         <button class="btn btn-primary" id="addCategoryBtn">+ Add Category</button>
       </div>
+      <div id="categoryStatus" style="display:none;margin-bottom:1rem;padding:0.75rem 1rem;border-radius:var(--radius-sm);font-size:0.9rem"></div>
       <div class="admin-table-wrapper">
         <table class="admin-table">
           <thead>
@@ -46,10 +47,35 @@
       return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
     }
 
+    function escapeHtml(text) {
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function showCategoryStatus(message, isError = false) {
+      const el = document.getElementById("categoryStatus");
+      el.style.display = "block";
+      el.style.background = isError ? "rgba(239,68,68,0.1)" : "rgba(124,58,237,0.1)";
+      el.style.border = `1px solid ${isError ? "var(--danger)" : "var(--accent)"}`;
+      el.style.color = isError ? "var(--danger)" : "var(--text-muted)";
+      el.textContent = message;
+    }
+
     async function loadCategories() {
       const tbody = document.getElementById("categoriesTable");
       try {
-        categories = await FirebaseService.getCategories();
+        if (STORE_CONFIG.demoMode) {
+          showCategoryStatus("Demo mode is on — viewing sample categories. Set demoMode: false in assets/js/config.js to save changes.");
+        } else if (!AdminAuth.getUser()) {
+          showCategoryStatus("Waiting for login...", true);
+        } else {
+          document.getElementById("categoryStatus").style.display = "none";
+        }
+
+        categories = await FirebaseService.getCategories({ strict: true });
 
         if (!categories.length) {
           tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted)">No categories yet. Click "+ Add Category" to create one.</td></tr>`;
@@ -67,15 +93,16 @@
             </td>
           </tr>`).join("");
       } catch (err) {
+        showCategoryStatus(AdminUI.formatError(err), true);
         tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--danger)">${AdminUI.formatError(err)}</td></tr>`;
       }
     }
 
     function categoryFormHtml(cat = {}) {
       return `
-        <div class="form-group"><label>Name</label><input class="form-input" id="cName" value="${cat.name || ""}" required></div>
-        <div class="form-group"><label>Icon (emoji)</label><input class="form-input" id="cIcon" value="${cat.icon || "📁"}" maxlength="4"></div>
-        <div class="form-group"><label>Slug</label><input class="form-input" id="cSlug" value="${cat.slug || ""}" placeholder="auto-generated from name"></div>`;
+        <div class="form-group"><label>Name</label><input class="form-input" id="cName" value="${escapeHtml(cat.name)}" required></div>
+        <div class="form-group"><label>Icon (emoji)</label><input class="form-input" id="cIcon" value="${escapeHtml(cat.icon || "📁")}" maxlength="4"></div>
+        <div class="form-group"><label>Slug</label><input class="form-input" id="cSlug" value="${escapeHtml(cat.slug)}" placeholder="auto-generated from name"></div>`;
     }
 
     function openCategoryModal(cat = null) {
@@ -87,6 +114,10 @@
         }
 
         const name = modal.querySelector("#cName").value.trim();
+        if (!name) {
+          throw new Error("Category name is required");
+        }
+
         const data = {
           name,
           icon: modal.querySelector("#cIcon").value.trim() || "📁",
@@ -106,11 +137,19 @@
 
     window.editCategory = (id) => {
       const cat = categories.find((c) => c.id === id);
-      if (cat) openCategoryModal(cat);
+      if (!cat) {
+        AdminUI.showToast("Category not found. Refresh the page and try again.", true);
+        return;
+      }
+      openCategoryModal(cat);
     };
 
     window.deleteCategory = async (id) => {
       if (!confirm("Delete this category?")) return;
+      if (STORE_CONFIG.demoMode) {
+        AdminUI.showToast("Disable demo mode to delete categories", true);
+        return;
+      }
       try {
         await FirebaseService.deleteCategory(id);
         AdminUI.showToast("Category deleted");
@@ -121,7 +160,11 @@
     };
 
     document.getElementById("addCategoryBtn").addEventListener("click", () => openCategoryModal());
-    loadCategories();
+    AdminAuth.whenReady().then((user) => {
+      if (user) loadCategories();
+      else document.getElementById("categoriesTable").innerHTML =
+        `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--danger)">Please log in to manage categories.</td></tr>`;
+    });
   </script>
 </body>
 </html>

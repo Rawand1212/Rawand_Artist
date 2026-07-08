@@ -5,8 +5,20 @@ const FirebaseService = {
     }
   },
 
-  async getCategories() {
-    if (STORE_CONFIG.demoMode || !initFirebase()) {
+  _ensureAuth() {
+    if (!auth?.currentUser) {
+      throw { code: "unauthenticated", message: "You are not logged in. Please log in again." };
+    }
+  },
+
+  async getCategories(options = {}) {
+    if (STORE_CONFIG.demoMode) {
+      return DEMO_CATEGORIES;
+    }
+    if (!initFirebase()) {
+      if (options.strict) {
+        throw new Error("Firebase not connected. Check firebase/config.js and refresh the page.");
+      }
       return DEMO_CATEGORIES;
     }
     this._ensureDb();
@@ -96,17 +108,20 @@ const FirebaseService = {
 
   async addCategory(data) {
     this._ensureDb();
+    this._ensureAuth();
     const doc = await db.collection("categories").add(data);
     return doc.id;
   },
 
   async updateCategory(id, data) {
     this._ensureDb();
+    this._ensureAuth();
     await db.collection("categories").doc(id).update(data);
   },
 
   async deleteCategory(id) {
     this._ensureDb();
+    this._ensureAuth();
     await db.collection("categories").doc(id).delete();
   },
 
