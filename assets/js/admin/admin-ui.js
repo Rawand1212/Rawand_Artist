@@ -66,7 +66,9 @@ const AdminUI = {
     overlay.querySelector(".modal-close").addEventListener("click", close);
     overlay.querySelector(".modal-cancel").addEventListener("click", close);
     overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
-    overlay.querySelector(".modal-save").addEventListener("click", async () => {
+    overlay.querySelector(".modal-save").addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
       const btn = overlay.querySelector(".modal-save");
       btn.disabled = true;
       btn.textContent = "Saving...";

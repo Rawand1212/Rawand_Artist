@@ -89,6 +89,7 @@ const FirebaseService = {
 
   async addProduct(data) {
     this._ensureDb();
+    this._ensureAuth();
     const doc = await db.collection("products").add({
       ...data,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -98,11 +99,13 @@ const FirebaseService = {
 
   async updateProduct(id, data) {
     this._ensureDb();
+    this._ensureAuth();
     await db.collection("products").doc(id).update(data);
   },
 
   async deleteProduct(id) {
     this._ensureDb();
+    this._ensureAuth();
     await db.collection("products").doc(id).delete();
   },
 

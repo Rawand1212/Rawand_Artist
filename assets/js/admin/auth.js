@@ -1,47 +1,65 @@
 const AdminAuth = {
   _ready: false,
+  _hadUser: false,
 
   init() {
     if (!initFirebase()) return false;
 
-    let initial = true;
     auth.onAuthStateChanged((user) => {
       this._ready = true;
-      const isLoginPage = window.location.pathname.includes("login.html");
+      const onLoginPage = window.location.pathname.includes("login.html");
 
-      if (user && isLoginPage) {
+      if (user && onLoginPage) {
         window.location.replace("dashboard.html");
         return;
       }
 
-      if (!user && !isLoginPage) {
-        if (window.__loginInProgress) return;
-        if (initial) {
-          setTimeout(() => {
-            if (!auth.currentUser && !window.__loginInProgress) {
-              window.location.replace("login.html");
-            }
-          }, 1000);
-        } else {
-          window.location.replace("login.html");
-        }
+      if (user) {
+        this._hadUser = true;
+        return;
       }
 
-      initial = false;
+      // Only redirect to login after user was logged in and signed out
+      if (!onLoginPage && this._hadUser && !window.__loginInProgress) {
+        window.location.replace("login.html");
+      }
     });
 
     return true;
   },
 
-  whenReady() {
-    if (!auth) return Promise.resolve(null);
-    return new Promise((resolve) => {
-      const unsub = auth.onAuthStateChanged((user) => {
-        unsub();
-        this._ready = true;
-        resolve(user);
+  async requireUser() {
+    if (!auth) return null;
+
+    if (typeof auth.authStateReady === "function") {
+      await auth.authStateReady();
+    } else {
+      await new Promise((resolve) => {
+        const unsub = auth.onAuthStateChanged(() => {
+          unsub();
+          resolve();
+        });
       });
-    });
+    }
+
+    this._ready = true;
+    const user = auth.currentUser;
+    const onLoginPage = window.location.pathname.includes("login.html");
+
+    if (user) {
+      this._hadUser = true;
+      return user;
+    }
+
+    if (!onLoginPage && !window.__loginInProgress) {
+      window.location.replace("login.html");
+    }
+
+    return null;
+  },
+
+  whenReady() {
+    return this.requireUser();
   },
 
   async login(email, password) {
