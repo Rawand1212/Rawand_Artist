@@ -39,7 +39,9 @@ const AdminUI = {
     const messages = {
       "permission-denied": "Permission denied. Update Firestore rules in Firebase Console (see Settings page).",
       "unauthenticated": "You are not logged in. Please log in again.",
-      "not-found": "Cannot reach Firestore. Publish your rules, allow rawand1212.github.io in Firebase Auth domains, and disable ad blockers.",
+      "not-found": "Firestore API blocked. Fix: Google Cloud → Credentials → API key → allow Cloud Firestore API + add rawand1212.github.io/* as referrer. Or disable ad blocker.",
+      "firebase-blocked": "Firebase SDK blocked. Disable ad blocker for this site.",
+      "firestore-blocked": "Firestore SDK blocked. Disable ad blocker (uBlock, AdBlock, Privacy Badger).",
       "failed-precondition": "Firestore index required. Try again or check Firebase Console.",
       "storage/unauthorized": "Storage permission denied. Update Storage rules in Firebase Console."
     };

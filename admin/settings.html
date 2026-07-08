@@ -40,8 +40,16 @@
       <div class="admin-table-wrapper" style="padding:1.5rem;margin-bottom:1.5rem">
         <h2 style="font-family:var(--font-display);font-size:1.1rem;margin-bottom:1rem">Connection Test</h2>
         <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem">Test if your admin can write to Firestore.</p>
+        <div id="diagInfo" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem;line-height:1.8"></div>
         <button type="button" class="btn btn-primary" id="testFirestoreBtn" style="width:auto">Test Firestore Write</button>
         <p id="testResult" style="margin-top:1rem;font-size:0.9rem"></p>
+        <div style="margin-top:1.5rem;padding:1rem;background:var(--bg-input);border-radius:var(--radius-sm);font-size:0.85rem;color:var(--text-muted);line-height:1.7">
+          <strong style="color:var(--text)">If test fails with "not-found":</strong><br>
+          1. <a href="https://console.cloud.google.com/apis/library/firestore.googleapis.com?project=rawand-artist" target="_blank">Enable Cloud Firestore API</a><br>
+          2. <a href="https://console.cloud.google.com/apis/credentials?project=rawand-artist" target="_blank">Open API Credentials</a> → click your Browser API key → set API restrictions to <strong>Don't restrict</strong> (or include Cloud Firestore API) → add referrer <code>https://rawand1212.github.io/*</code><br>
+          3. Disable ad blocker for this site<br>
+          4. Hard refresh (Ctrl+Shift+R)
+        </div>
       </div>
 
       <div class="admin-table-wrapper" style="padding:1.5rem">
@@ -89,6 +97,14 @@ service cloud.firestore {
       const user = await AdminAuth.requireUser();
       if (user) document.getElementById("userEmail").textContent = user.email;
 
+      const diag = FirebaseService.getDiagnostics();
+      document.getElementById("diagInfo").innerHTML = `
+        Project: <strong>${diag.projectId}</strong><br>
+        Firebase SDK: ${diag.firebaseLoaded ? "✅" : "❌ blocked"}<br>
+        Firestore SDK: ${diag.firestoreLoaded ? "✅" : "❌ blocked"}<br>
+        Database connected: ${diag.dbConnected ? "✅" : "❌"}<br>
+        Logged in: ${diag.loggedIn ? "✅ " + diag.email : "❌"}`;
+
       document.getElementById("testFirestoreBtn").addEventListener("click", async () => {
         const el = document.getElementById("testResult");
         el.style.color = "var(--text-muted)";
@@ -99,7 +115,7 @@ service cloud.firestore {
           el.textContent = "✅ Success! Firestore write works. You can add categories now.";
         } catch (err) {
           el.style.color = "var(--danger)";
-          el.textContent = "❌ Failed: " + AdminUI.formatError(err) + (err.code ? ` (${err.code})` : "");
+          el.textContent = "❌ Failed: " + AdminUI.formatError(err) + (err.code ? ` [${err.code}]` : "") + (err.message && !AdminUI.formatError(err).includes(err.message) ? ` — ${err.message}` : "");
         }
       });
     })();

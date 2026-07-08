@@ -1,7 +1,16 @@
 const FirebaseService = {
   _ensureDb() {
-    if (!initFirebase() || !db) {
-      throw new Error("Database not connected. Create Firestore in Firebase Console.");
+    if (typeof firebase === "undefined") {
+      throw { code: "firebase-blocked", message: "Firebase SDK blocked. Disable ad blocker for this site." };
+    }
+    if (!initFirebase()) {
+      throw { code: "firebase-init", message: "Firebase failed to start. Refresh the page." };
+    }
+    if (typeof firebase.firestore !== "function") {
+      throw { code: "firestore-blocked", message: "Firestore SDK blocked. Disable ad blocker (uBlock, AdBlock, etc.)." };
+    }
+    if (!db) {
+      throw { code: "firestore-init", message: "Firestore not connected. Disable ad blocker and refresh." };
     }
   },
 
@@ -137,13 +146,29 @@ const FirebaseService = {
   async testWriteAccess() {
     this._ensureDb();
     this._ensureAuth();
+
+    // Test read first
+    await db.collection("categories").limit(1).get();
+
     const doc = await db.collection("categories").add({
       name: "_test",
       icon: "✅",
       slug: "test"
     });
-    await doc.ref.delete();
+    await doc.delete();
     return true;
+  },
+
+  getDiagnostics() {
+    initFirebase();
+    return {
+      projectId: firebaseConfig?.projectId || "unknown",
+      firebaseLoaded: typeof firebase !== "undefined",
+      firestoreLoaded: typeof firebase?.firestore === "function",
+      dbConnected: !!db,
+      loggedIn: !!auth?.currentUser,
+      email: auth?.currentUser?.email || null
+    };
   },
 
   async seedSampleData() {
