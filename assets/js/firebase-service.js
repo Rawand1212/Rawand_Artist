@@ -109,6 +109,12 @@ const FirebaseService = {
     await db.collection("products").doc(id).delete();
   },
 
+  async deleteProduct(id) {
+    this._ensureDb();
+    this._ensureAuth();
+    await db.collection("products").doc(id).delete();
+  },
+
   async addCategory(data) {
     this._ensureDb();
     this._ensureAuth();
@@ -126,6 +132,18 @@ const FirebaseService = {
     this._ensureDb();
     this._ensureAuth();
     await db.collection("categories").doc(id).delete();
+  },
+
+  async testWriteAccess() {
+    this._ensureDb();
+    this._ensureAuth();
+    const doc = await db.collection("categories").add({
+      name: "_test",
+      icon: "✅",
+      slug: "test"
+    });
+    await doc.ref.delete();
+    return true;
   },
 
   async seedSampleData() {
