@@ -220,7 +220,7 @@ const FirebaseService = {
   },
 
   async updateProduct(id, data) {
-    if (!id || id === "undefined") {
+    if (!id) {
       throw { code: "invalid-argument", message: "Invalid product ID." };
     }
     this._ensureAuth();
@@ -228,7 +228,7 @@ const FirebaseService = {
   },
 
   async deleteProduct(id) {
-    if (!id || id === "undefined") {
+    if (!id) {
       throw { code: "invalid-argument", message: "Invalid product ID." };
     }
     this._ensureAuth();
@@ -241,7 +241,7 @@ const FirebaseService = {
   },
 
   async updateCategory(id, data) {
-    if (!id || id === "undefined") {
+    if (!id) {
       throw { code: "invalid-argument", message: "Invalid category ID." };
     }
     this._ensureAuth();
@@ -249,7 +249,7 @@ const FirebaseService = {
   },
 
   async deleteCategory(id) {
-    if (!id || id === "undefined") {
+    if (!id) {
       throw { code: "invalid-argument", message: "Invalid category ID." };
     }
     this._ensureAuth();

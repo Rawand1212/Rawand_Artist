@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Categories — Rawand Artist Admin</title>
-  <link rel="stylesheet" href="../assets/css/admin.css?v=7">
+  <link rel="stylesheet" href="../assets/css/admin.css?v=8">
 </head>
 <body>
   <div class="admin-layout">
@@ -36,12 +36,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="../assets/js/config.js?v=7"></script>
-  <script src="../assets/js/demo-data.js?v=7"></script>
-  <script src="../firebase/config.js?v=7"></script>
-  <script src="../assets/js/firebase-service.js?v=7"></script>
-  <script src="../assets/js/admin/auth.js?v=7"></script>
-  <script src="../assets/js/admin/admin-ui.js?v=7"></script>
+  <script src="../assets/js/config.js?v=8"></script>
+  <script src="../assets/js/demo-data.js?v=8"></script>
+  <script src="../firebase/config.js?v=8"></script>
+  <script src="../assets/js/firebase-service.js?v=8"></script>
+  <script src="../assets/js/admin/auth.js?v=8"></script>
+  <script src="../assets/js/admin/admin-ui.js?v=8"></script>
   <script>
     let categories = [];
 
@@ -66,6 +66,10 @@
       el.textContent = message;
     }
 
+    function isBrokenCategory(c) {
+      return !c?.id || c.id === "undefined";
+    }
+
     async function loadCategories() {
       const tbody = document.getElementById("categoriesTable");
       try {
@@ -84,16 +88,19 @@
         }
 
         document.getElementById("importBanner").style.display = "none";
-        tbody.innerHTML = categories.map((c) => `
-          <tr>
+        tbody.innerHTML = categories.map((c) => {
+          const broken = isBrokenCategory(c);
+          return `
+          <tr${broken ? ' style="background:rgba(239,68,68,0.08)"' : ""}>
             <td style="font-size:1.5rem">${c.icon || "📁"}</td>
-            <td>${escapeHtml(c.name)}</td>
+            <td>${escapeHtml(c.name)}${broken ? ' <span style="color:var(--danger);font-size:0.75rem">(broken — delete this)</span>' : ""}</td>
             <td>${escapeHtml(c.slug || slugify(c.name))}</td>
             <td class="actions">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="editCategory('${c.id}')">Edit</button>
+              ${broken ? "" : `<button type="button" class="btn btn-secondary btn-sm" onclick="editCategory('${c.id}')">Edit</button>`}
               <button type="button" class="btn btn-danger btn-sm" onclick="deleteCategory('${c.id}')">Delete</button>
             </td>
-          </tr>`).join("");
+          </tr>`;
+        }).join("");
       } catch (err) {
         showCategoryStatus(AdminUI.formatError(err), true);
         tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--danger)">${AdminUI.formatError(err)}</td></tr>`;
@@ -109,7 +116,7 @@
     }
 
     function openCategoryModal(cat = null) {
-      const isEdit = !!(cat && typeof cat === "object" && cat.id && cat.id !== "undefined");
+      const isEdit = !!(cat && typeof cat === "object" && cat.id && !isBrokenCategory(cat));
       AdminUI.openModal(isEdit ? "Edit Category" : "Add Category", categoryFormHtml(isEdit ? cat : {}), async (overlay) => {
         const name = overlay.querySelector("#cName").value.trim();
         if (!name) throw new Error("Category name is required");
@@ -124,8 +131,13 @@
           await FirebaseService.updateCategory(cat.id, data);
           AdminUI.showToast("Category updated!");
         } else {
-          await FirebaseService.addCategory(data);
-          AdminUI.showToast("Category created!");
+          const newId = await FirebaseService.addCategory(data);
+          AdminUI.showToast(`Category created! (ID: ${newId.slice(0, 8)}…)`);
+          if (cat && isBrokenCategory(cat)) {
+            try {
+              await FirebaseService.deleteCategory(cat.id);
+            } catch (_) { /* ignore */ }
+          }
         }
         loadCategories();
       });
