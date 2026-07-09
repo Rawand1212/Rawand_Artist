@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Products — Rawand Artist Admin</title>
-  <link rel="stylesheet" href="../assets/css/admin.css?v=6">
+  <link rel="stylesheet" href="../assets/css/admin.css?v=7">
 </head>
 <body>
   <div class="admin-layout">
@@ -38,13 +38,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
-  <script src="../assets/js/config.js?v=6"></script>
-  <script src="../assets/js/demo-data.js?v=6"></script>
-  <script src="../firebase/config.js?v=6"></script>
-  <script src="../assets/js/image-utils.js?v=6"></script>
-  <script src="../assets/js/firebase-service.js?v=6"></script>
-  <script src="../assets/js/admin/auth.js?v=6"></script>
-  <script src="../assets/js/admin/admin-ui.js?v=6"></script>
+  <script src="../assets/js/config.js?v=7"></script>
+  <script src="../assets/js/demo-data.js?v=7"></script>
+  <script src="../firebase/config.js?v=7"></script>
+  <script src="../assets/js/image-utils.js?v=7"></script>
+  <script src="../assets/js/firebase-service.js?v=7"></script>
+  <script src="../assets/js/admin/auth.js?v=7"></script>
+  <script src="../assets/js/admin/admin-ui.js?v=7"></script>
   <script>
     let categories = [];
     let products = [];
@@ -69,10 +69,26 @@
     async function loadProducts() {
       const tbody = document.getElementById("productsTable");
       try {
-        [products, categories] = await Promise.all([
+        const [productResult, categoryResult] = await Promise.allSettled([
           FirebaseService.getProducts(),
           FirebaseService.getCategories()
         ]);
+
+        if (categoryResult.status === "fulfilled") {
+          categories = categoryResult.value;
+        } else {
+          categories = [];
+          showStatus("Could not load categories: " + AdminUI.formatError(categoryResult.reason), true);
+        }
+
+        if (productResult.status === "fulfilled") {
+          products = productResult.value;
+        } else {
+          products = [];
+          showStatus("Could not load products: " + AdminUI.formatError(productResult.reason), true);
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--danger)">${AdminUI.formatError(productResult.reason)}</td></tr>`;
+          return;
+        }
 
         if (!products.length) {
           tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">No products yet. ${categories.length ? 'Click "+ Add Product" to create one.' : 'Add a category first (Categories page), then add products.'}</td></tr>`;
@@ -98,20 +114,21 @@
       }
     }
 
-    function productFormHtml(product = {}) {
+    function productFormHtml(product) {
+      const p = product || {};
       const catOptions = categories.map((c) =>
-        `<option value="${c.id}" data-name="${escapeHtml(c.name)}" ${product.categoryId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`
+        `<option value="${c.id}" data-name="${escapeHtml(c.name)}" ${p.categoryId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`
       ).join("");
 
       return `
-        <div class="form-group"><label>Name *</label><input class="form-input" id="pName" value="${escapeHtml(product.name)}" required></div>
-        <div class="form-group"><label>Description</label><textarea class="form-textarea" id="pDesc">${escapeHtml(product.description)}</textarea></div>
-        <div class="form-group"><label>Price ($) *</label><input type="number" step="0.01" min="0" class="form-input" id="pPrice" value="${product.price ?? ""}" required></div>
+        <div class="form-group"><label>Name *</label><input class="form-input" id="pName" value="${escapeHtml(p.name)}" required></div>
+        <div class="form-group"><label>Description</label><textarea class="form-textarea" id="pDesc">${escapeHtml(p.description)}</textarea></div>
+        <div class="form-group"><label>Price ($) *</label><input type="number" step="0.01" min="0" class="form-input" id="pPrice" value="${p.price ?? ""}" required></div>
         <div class="form-group"><label>Category *</label><select class="form-select" id="pCategory" required><option value="">Select category</option>${catOptions}</select></div>
-        <div class="form-group"><label>Stock</label><input type="number" class="form-input" id="pStock" value="${product.stock ?? 0}" min="0"></div>
+        <div class="form-group"><label>Stock</label><input type="number" class="form-input" id="pStock" value="${p.stock ?? 0}" min="0"></div>
         <div class="toggle-group">
-          <label class="toggle-label"><input type="checkbox" id="pFeatured" ${product.featured ? "checked" : ""}> Featured</label>
-          <label class="toggle-label"><input type="checkbox" id="pNew" ${product.isNew ? "checked" : ""}> New Arrival</label>
+          <label class="toggle-label"><input type="checkbox" id="pFeatured" ${p.featured ? "checked" : ""}> Featured</label>
+          <label class="toggle-label"><input type="checkbox" id="pNew" ${p.isNew ? "checked" : ""}> New Arrival</label>
         </div>
         <div class="form-group" style="margin-top:1rem"><label>Images (optional)</label><div id="imageUploadArea"></div></div>`;
     }
@@ -137,7 +154,14 @@
       };
     }
 
-    function openProductModal(product = null) {
+    async function openProductModal(product = null) {
+      try {
+        categories = await FirebaseService.getCategories();
+      } catch (err) {
+        AdminUI.showToast("Could not load categories: " + AdminUI.formatError(err), true);
+        return;
+      }
+
       if (!categories.length) {
         AdminUI.showToast("Add a category first (Categories page), then add products.", true);
         return;
@@ -146,7 +170,7 @@
       const isEdit = !!product;
       const overlay = AdminUI.openModal(
         isEdit ? "Edit Product" : "Add Product",
-        productFormHtml(product),
+        productFormHtml(isEdit ? product : {}),
         async (modal) => {
           const data = readProductForm(modal);
           const grid = modal.querySelector("#previewGrid");
@@ -208,13 +232,16 @@
         }
 
         AdminUI.injectLayout("products");
-        document.getElementById("addProductBtn").addEventListener("click", () => openProductModal());
+        const addBtn = document.getElementById("addProductBtn");
+        addBtn.disabled = true;
+        addBtn.addEventListener("click", () => openProductModal());
 
         const user = await AdminAuth.requireUser();
         if (!user) return;
 
-        showStatus(`Logged in as ${user.email}. Click "+ Add Product", fill the form, then "Save to Store".`);
         await loadProducts();
+        addBtn.disabled = false;
+        showStatus(`Logged in as ${user.email}. ${categories.length} categor${categories.length === 1 ? "y" : "ies"}, ${products.length} product${products.length === 1 ? "" : "s"}. Click "+ Add Product" to create one.`);
       } catch (err) {
         showStatus(err.message || "Something went wrong. Refresh the page.", true);
       }

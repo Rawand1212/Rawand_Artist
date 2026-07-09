@@ -155,9 +155,12 @@ const FirebaseService = {
     return STORE_CONFIG.demoMode === true;
   },
 
-  async getCategories() {
+  async getCategories(options = {}) {
     if (this._useDemo()) return DEMO_CATEGORIES;
-    const categories = await FirestoreRest.listCollection("categories");
+    let categories = await FirestoreRest.listCollection("categories");
+    if (!options.includeBroken) {
+      categories = categories.filter((c) => c.id && c.id !== "undefined");
+    }
     return categories.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   },
 

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Categories — Rawand Artist Admin</title>
-  <link rel="stylesheet" href="../assets/css/admin.css?v=6">
+  <link rel="stylesheet" href="../assets/css/admin.css?v=7">
 </head>
 <body>
   <div class="admin-layout">
@@ -36,12 +36,12 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="../assets/js/config.js?v=6"></script>
-  <script src="../assets/js/demo-data.js?v=6"></script>
-  <script src="../firebase/config.js?v=6"></script>
-  <script src="../assets/js/firebase-service.js?v=6"></script>
-  <script src="../assets/js/admin/auth.js?v=6"></script>
-  <script src="../assets/js/admin/admin-ui.js?v=6"></script>
+  <script src="../assets/js/config.js?v=7"></script>
+  <script src="../assets/js/demo-data.js?v=7"></script>
+  <script src="../firebase/config.js?v=7"></script>
+  <script src="../assets/js/firebase-service.js?v=7"></script>
+  <script src="../assets/js/admin/auth.js?v=7"></script>
+  <script src="../assets/js/admin/admin-ui.js?v=7"></script>
   <script>
     let categories = [];
 
@@ -70,12 +70,17 @@
       const tbody = document.getElementById("categoriesTable");
       try {
         document.getElementById("categoryStatus").style.display = "none";
-        categories = await FirebaseService.getCategories();
+        categories = await FirebaseService.getCategories({ includeBroken: true });
 
         if (!categories.length) {
           document.getElementById("importBanner").style.display = "block";
           tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:2rem;color:var(--text-muted)">No categories yet. Click "+ Add Category" or import sample data above.</td></tr>`;
           return;
+        }
+
+        const broken = categories.filter((c) => c.id === "undefined");
+        if (broken.length) {
+          showCategoryStatus('Warning: delete the broken "ps3 games" row below (bad ID from an old bug), then add categories again.', true);
         }
 
         document.getElementById("importBanner").style.display = "none";
@@ -95,16 +100,17 @@
       }
     }
 
-    function categoryFormHtml(cat = {}) {
+    function categoryFormHtml(cat) {
+      const c = cat || {};
       return `
-        <div class="form-group"><label>Name</label><input class="form-input" id="cName" value="${escapeHtml(cat.name)}" required></div>
-        <div class="form-group"><label>Icon (emoji)</label><input class="form-input" id="cIcon" value="${escapeHtml(cat.icon || "📁")}" maxlength="4"></div>
-        <div class="form-group"><label>Slug</label><input class="form-input" id="cSlug" value="${escapeHtml(cat.slug)}" placeholder="auto-generated from name"></div>`;
+        <div class="form-group"><label>Name</label><input class="form-input" id="cName" value="${escapeHtml(c.name)}" required></div>
+        <div class="form-group"><label>Icon (emoji)</label><input class="form-input" id="cIcon" value="${escapeHtml(c.icon || "📁")}" maxlength="4"></div>
+        <div class="form-group"><label>Slug</label><input class="form-input" id="cSlug" value="${escapeHtml(c.slug)}" placeholder="auto-generated from name"></div>`;
     }
 
     function openCategoryModal(cat = null) {
       const isEdit = !!(cat && typeof cat === "object" && cat.id && cat.id !== "undefined");
-      AdminUI.openModal(isEdit ? "Edit Category" : "Add Category", categoryFormHtml(cat), async (overlay) => {
+      AdminUI.openModal(isEdit ? "Edit Category" : "Add Category", categoryFormHtml(isEdit ? cat : {}), async (overlay) => {
         const name = overlay.querySelector("#cName").value.trim();
         if (!name) throw new Error("Category name is required");
 
@@ -172,7 +178,13 @@
 
         AdminUI.injectLayout("categories");
 
-        document.getElementById("addCategoryBtn").addEventListener("click", () => openCategoryModal());
+        document.getElementById("addCategoryBtn").addEventListener("click", () => {
+          try {
+            openCategoryModal();
+          } catch (err) {
+            AdminUI.showToast(err.message || "Could not open form. Refresh the page.", true);
+          }
+        });
         document.getElementById("importSampleBtn").addEventListener("click", importSampleData);
 
         const user = await AdminAuth.requireUser();
