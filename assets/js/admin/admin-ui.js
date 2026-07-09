@@ -43,7 +43,8 @@ const AdminUI = {
       "firebase-blocked": "Firebase SDK blocked. Disable ad blocker for this site.",
       "firestore-blocked": "Firestore SDK blocked. Disable ad blocker (uBlock, AdBlock, Privacy Badger).",
       "failed-precondition": "Firestore index required. Try again or check Firebase Console.",
-      "storage/unauthorized": "Storage permission denied. Update Storage rules in Firebase Console."
+      "storage/unauthorized": "Storage permission denied. Update Storage rules in Firebase Console.",
+      "storage/not-configured": "Firebase Storage not enabled. Enable it in Firebase Console → Storage."
     };
     return messages[code] || err?.message || "Something went wrong. Try again.";
   },
@@ -146,6 +147,7 @@ const ImageUpload = {
   },
 
   getExistingUrls(grid) {
+    if (!grid) return [];
     return [...grid.querySelectorAll(".image-preview")]
       .filter((el) => el.dataset.existing === "true")
       .map((el) => el.dataset.url);

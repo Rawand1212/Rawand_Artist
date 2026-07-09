@@ -56,19 +56,16 @@
 
   <div id="site-footer"></div>
 
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-  <script src="assets/js/config.js"></script>
-  <script src="assets/js/demo-data.js"></script>
-  <script src="firebase/config.js"></script>
-  <script src="assets/js/image-utils.js"></script>
-  <script src="assets/js/ui.js"></script>
-  <script src="assets/js/firebase-service.js?v=5"></script>
-  <script src="assets/js/products.js"></script>
-  <script src="assets/js/components.js"></script>
+  <script src="assets/js/config.js?v=6"></script>
+  <script src="assets/js/demo-data.js?v=6"></script>
+  <script src="firebase/config.js?v=6"></script>
+  <script src="assets/js/image-utils.js?v=6"></script>
+  <script src="assets/js/ui.js?v=6"></script>
+  <script src="assets/js/firebase-service.js?v=6"></script>
+  <script src="assets/js/products.js?v=6"></script>
+  <script src="assets/js/components.js?v=6"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
-      initFirebase();
       Components.injectLayout("home");
 
       const categories = await FirebaseService.getCategories();

@@ -8,16 +8,13 @@ const FirestoreRest = {
     if (typeof value === "string") return { stringValue: value };
     if (typeof value === "boolean") return { booleanValue: value };
     if (typeof value === "number") {
+      if (Number.isNaN(value)) return { nullValue: null };
       return Number.isInteger(value)
         ? { integerValue: String(value) }
         : { doubleValue: value };
     }
     if (Array.isArray(value)) {
       return { arrayValue: { values: value.map((v) => this._toField(v)) } };
-    }
-    if (value instanceof Date) return { timestampValue: value.toISOString() };
-    if (typeof value === "object" && value.seconds !== undefined) {
-      return { timestampValue: new Date(value.seconds * 1000).toISOString() };
     }
     return { stringValue: String(value) };
   },
@@ -65,6 +62,16 @@ const FirestoreRest = {
     };
   },
 
+  async _parseResponse(res, fallback) {
+    const text = await res.text();
+    let json = {};
+    if (text) {
+      try { json = JSON.parse(text); } catch { json = { error: { message: text } }; }
+    }
+    if (!res.ok) this._mapError(json, fallback);
+    return json;
+  },
+
   async _headers(authRequired = false) {
     const headers = { "Content-Type": "application/json" };
     if (authRequired) {
@@ -78,18 +85,16 @@ const FirestoreRest = {
 
   async listCollection(collection) {
     const url = `${this._base()}/${collection}?key=${firebaseConfig.apiKey}`;
-    const res = await fetch(url, { headers: await this._headers(false) });
-    const json = await res.json();
-    if (!res.ok) this._mapError(json, "Failed to load data");
+    const res = await fetch(url);
+    const json = await this._parseResponse(res, "Failed to load data");
     return (json.documents || []).map((doc) => this._fromDoc(doc));
   },
 
   async getDocument(collection, id) {
     const url = `${this._base()}/${collection}/${id}?key=${firebaseConfig.apiKey}`;
-    const res = await fetch(url, { headers: await this._headers(false) });
+    const res = await fetch(url);
     if (res.status === 404) return null;
-    const json = await res.json();
-    if (!res.ok) this._mapError(json, "Failed to load document");
+    const json = await this._parseResponse(res, "Failed to load document");
     return this._fromDoc(json);
   },
 
@@ -100,23 +105,21 @@ const FirestoreRest = {
       headers: await this._headers(true),
       body: JSON.stringify({ fields: this._toFields(data) })
     });
-    const json = await res.json();
-    if (!res.ok) this._mapError(json, "Failed to save data");
+    const json = await this._parseResponse(res, "Failed to save data");
     return json.name.split("/").pop();
   },
 
   async updateDocument(collection, id, data) {
     const keys = Object.keys(data).filter((k) => data[k] !== undefined);
-    const mask = keys.map((k) => `updateMask.fieldPaths=${k}`).join("&");
+    if (!keys.length) return;
+    const mask = keys.map((k) => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join("&");
     const url = `${this._base()}/${collection}/${id}?key=${firebaseConfig.apiKey}&${mask}`;
     const res = await fetch(url, {
       method: "PATCH",
       headers: await this._headers(true),
       body: JSON.stringify({ fields: this._toFields(data) })
     });
-    const json = await res.json();
-    if (!res.ok) this._mapError(json, "Failed to update data");
-    return json;
+    await this._parseResponse(res, "Failed to update data");
   },
 
   async deleteDocument(collection, id) {
@@ -126,10 +129,7 @@ const FirestoreRest = {
       headers: await this._headers(true)
     });
     if (res.status === 404) return;
-    if (!res.ok) {
-      const json = await res.json();
-      this._mapError(json, "Failed to delete data");
-    }
+    await this._parseResponse(res, "Failed to delete data");
   },
 
   async testWriteAccess() {
@@ -145,30 +145,24 @@ const FirestoreRest = {
 
 const FirebaseService = {
   _ensureAuth() {
+    initFirebase();
     if (!auth?.currentUser) {
       throw { code: "unauthenticated", message: "You are not logged in. Please log in again." };
     }
   },
 
-  _ensureFirebase() {
-    if (!initFirebase()) {
-      throw { code: "firebase-init", message: "Firebase failed to start. Refresh the page." };
-    }
+  _useDemo() {
+    return STORE_CONFIG.demoMode === true;
   },
 
-  async getCategories(options = {}) {
-    if (STORE_CONFIG.demoMode) return DEMO_CATEGORIES;
-    if (!initFirebase()) {
-      if (options.strict) throw new Error("Firebase not connected. Check firebase/config.js and refresh the page.");
-      return DEMO_CATEGORIES;
-    }
-    this._ensureFirebase();
+  async getCategories() {
+    if (this._useDemo()) return DEMO_CATEGORIES;
     const categories = await FirestoreRest.listCollection("categories");
     return categories.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
   },
 
   async getProducts(filters = {}) {
-    if (STORE_CONFIG.demoMode || !initFirebase()) {
+    if (this._useDemo()) {
       let products = [...DEMO_PRODUCTS];
       if (filters.categoryId) products = products.filter((p) => p.categoryId === filters.categoryId);
       if (filters.featured) products = products.filter((p) => p.featured);
@@ -185,7 +179,6 @@ const FirebaseService = {
       return products.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
     }
 
-    this._ensureFirebase();
     let products = await FirestoreRest.listCollection("products");
 
     if (filters.categoryId) products = products.filter((p) => p.categoryId === filters.categoryId);
@@ -196,7 +189,7 @@ const FirebaseService = {
       products = products.filter(
         (p) =>
           p.name.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q)
+          (p.description && p.description.toLowerCase().includes(q))
       );
     }
 
@@ -205,10 +198,7 @@ const FirebaseService = {
   },
 
   async getProduct(id) {
-    if (STORE_CONFIG.demoMode || !initFirebase()) {
-      return DEMO_PRODUCTS.find((p) => p.id === id) || null;
-    }
-    this._ensureFirebase();
+    if (this._useDemo()) return DEMO_PRODUCTS.find((p) => p.id === id) || null;
     return FirestoreRest.getDocument("products", id);
   },
 
@@ -218,46 +208,52 @@ const FirebaseService = {
   },
 
   async addProduct(data) {
-    this._ensureFirebase();
     this._ensureAuth();
     return FirestoreRest.addDocument("products", {
       ...data,
+      images: data.images || [],
       createdAt: Date.now()
     });
   },
 
   async updateProduct(id, data) {
-    this._ensureFirebase();
+    if (!id || id === "undefined") {
+      throw { code: "invalid-argument", message: "Invalid product ID." };
+    }
     this._ensureAuth();
     await FirestoreRest.updateDocument("products", id, data);
   },
 
   async deleteProduct(id) {
-    this._ensureFirebase();
+    if (!id || id === "undefined") {
+      throw { code: "invalid-argument", message: "Invalid product ID." };
+    }
     this._ensureAuth();
     await FirestoreRest.deleteDocument("products", id);
   },
 
   async addCategory(data) {
-    this._ensureFirebase();
     this._ensureAuth();
     return FirestoreRest.addDocument("categories", data);
   },
 
   async updateCategory(id, data) {
-    this._ensureFirebase();
+    if (!id || id === "undefined") {
+      throw { code: "invalid-argument", message: "Invalid category ID." };
+    }
     this._ensureAuth();
     await FirestoreRest.updateDocument("categories", id, data);
   },
 
   async deleteCategory(id) {
-    this._ensureFirebase();
+    if (!id || id === "undefined") {
+      throw { code: "invalid-argument", message: "Invalid category ID." };
+    }
     this._ensureAuth();
     await FirestoreRest.deleteDocument("categories", id);
   },
 
   async testWriteAccess() {
-    this._ensureFirebase();
     this._ensureAuth();
     return FirestoreRest.testWriteAccess();
   },
@@ -266,15 +262,15 @@ const FirebaseService = {
     initFirebase();
     return {
       projectId: firebaseConfig?.projectId || "unknown",
+      demoMode: STORE_CONFIG.demoMode,
       firebaseLoaded: typeof firebase !== "undefined",
-      firestoreMode: "REST API (built-in)",
+      firestoreMode: "REST API",
       loggedIn: !!auth?.currentUser,
       email: auth?.currentUser?.email || null
     };
   },
 
   async seedSampleData() {
-    this._ensureFirebase();
     this._ensureAuth();
 
     const [categories, products] = await Promise.all([
@@ -305,7 +301,8 @@ const FirebaseService = {
   },
 
   async uploadImage(file, path) {
-    if (!storage) throw new Error("Storage not connected. Enable Firebase Storage in Console.");
+    initFirebase();
+    if (!storage) throw { code: "storage/not-configured", message: "Enable Firebase Storage in Console (Build → Storage)." };
     const compressed = await ImageUtils.compress(file);
     const ref = storage.ref(path);
     await ref.put(compressed);
@@ -313,7 +310,7 @@ const FirebaseService = {
   },
 
   async getStats() {
-    if (STORE_CONFIG.demoMode || !initFirebase()) {
+    if (this._useDemo()) {
       return {
         totalProducts: DEMO_PRODUCTS.length,
         totalCategories: DEMO_CATEGORIES.length,
@@ -321,7 +318,6 @@ const FirebaseService = {
         lowStock: DEMO_PRODUCTS.filter((p) => p.stock <= 3).length
       };
     }
-    this._ensureFirebase();
     const [products, categories] = await Promise.all([
       FirestoreRest.listCollection("products"),
       FirestoreRest.listCollection("categories")
