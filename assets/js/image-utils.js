@@ -8,6 +8,7 @@ const ImageUtils = {
       const reader = new FileReader();
       reader.onload = (e) => {
         const img = new Image();
+        img.onerror = () => resolve(file);
         img.onload = () => {
           const canvas = document.createElement("canvas");
           let { width, height } = img;
@@ -19,13 +20,14 @@ const ImageUtils = {
           canvas.height = height;
           canvas.getContext("2d").drawImage(img, 0, 0, width, height);
           canvas.toBlob(
-            (blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })),
+            (blob) => resolve(blob ? new File([blob], file.name, { type: "image/jpeg" }) : file),
             "image/jpeg",
             quality
           );
         };
         img.src = e.target.result;
       };
+      reader.onerror = () => resolve(file);
       reader.readAsDataURL(file);
     });
   },

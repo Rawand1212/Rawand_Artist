@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Products — Rawand Artist Admin</title>
-  <link rel="stylesheet" href="../assets/css/admin.css?v=8">
+  <link rel="stylesheet" href="../assets/css/admin.css?v=9">
 </head>
 <body>
   <div class="admin-layout">
@@ -38,13 +38,13 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
-  <script src="../assets/js/config.js?v=8"></script>
-  <script src="../assets/js/demo-data.js?v=8"></script>
-  <script src="../firebase/config.js?v=8"></script>
-  <script src="../assets/js/image-utils.js?v=8"></script>
-  <script src="../assets/js/firebase-service.js?v=8"></script>
-  <script src="../assets/js/admin/auth.js?v=8"></script>
-  <script src="../assets/js/admin/admin-ui.js?v=8"></script>
+  <script src="../assets/js/config.js?v=9"></script>
+  <script src="../assets/js/demo-data.js?v=9"></script>
+  <script src="../firebase/config.js?v=9"></script>
+  <script src="../assets/js/image-utils.js?v=9"></script>
+  <script src="../assets/js/firebase-service.js?v=9"></script>
+  <script src="../assets/js/admin/auth.js?v=9"></script>
+  <script src="../assets/js/admin/admin-ui.js?v=9"></script>
   <script>
     let categories = [];
     let products = [];
@@ -154,6 +154,18 @@
       };
     }
 
+    async function uploadProductImages(productId, files, existingUrls) {
+      if (!files.length) return;
+      try {
+        const urls = await ImageUpload.uploadFiles(files, productId);
+        await FirebaseService.updateProduct(productId, { images: [...existingUrls, ...urls] });
+        AdminUI.showToast("Product images uploaded!");
+        loadProducts();
+      } catch (err) {
+        AdminUI.showToast("Product saved but image upload failed: " + AdminUI.formatError(err), true);
+      }
+    }
+
     async function openProductModal(product = null) {
       try {
         categories = await FirebaseService.getCategories();
@@ -175,32 +187,23 @@
           const data = readProductForm(modal);
           const grid = modal.querySelector("#previewGrid");
           const existingUrls = ImageUpload.getExistingUrls(grid);
+          const pendingFiles = ImageUpload.takePendingFiles();
           data.images = existingUrls;
 
+          let productId;
           if (isEdit) {
-            if (ImageUpload.pendingFiles.length) {
-              try {
-                const newUrls = await ImageUpload.uploadAll(product.id);
-                data.images = [...existingUrls, ...newUrls];
-              } catch (err) {
-                AdminUI.showToast("Product saved but image upload failed: " + AdminUI.formatError(err), true);
-              }
-            }
-            await FirebaseService.updateProduct(product.id, data);
+            productId = product.id;
+            await FirebaseService.updateProduct(productId, data);
             AdminUI.showToast("Product updated on store!");
           } else {
-            const id = await FirebaseService.addProduct(data);
-            if (ImageUpload.pendingFiles.length) {
-              try {
-                const urls = await ImageUpload.uploadAll(id);
-                await FirebaseService.updateProduct(id, { images: [...data.images, ...urls] });
-              } catch (err) {
-                AdminUI.showToast("Product saved but image upload failed: " + AdminUI.formatError(err), true);
-              }
-            }
+            productId = await FirebaseService.addProduct(data);
             AdminUI.showToast("Product added to store!");
           }
+
           loadProducts();
+          if (pendingFiles.length) {
+            uploadProductImages(productId, pendingFiles, existingUrls);
+          }
         }
       );
 

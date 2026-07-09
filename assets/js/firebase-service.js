@@ -3,6 +3,18 @@ const FirestoreRest = {
     return `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/(default)/documents`;
   },
 
+  async _authToken(ms = 15000) {
+    if (!auth?.currentUser) {
+      throw { code: "unauthenticated", message: "You are not logged in. Please log in again." };
+    }
+    return Promise.race([
+      auth.currentUser.getIdToken(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject({ code: "auth/timeout", message: "Login timed out. Refresh and sign in again." }), ms)
+      )
+    ]);
+  },
+
   _toField(value) {
     if (value === null || value === undefined) return { nullValue: null };
     if (typeof value === "string") return { stringValue: value };
@@ -75,10 +87,7 @@ const FirestoreRest = {
   async _headers(authRequired = false) {
     const headers = { "Content-Type": "application/json" };
     if (authRequired) {
-      if (!auth?.currentUser) {
-        throw { code: "unauthenticated", message: "You are not logged in. Please log in again." };
-      }
-      headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+      headers.Authorization = `Bearer ${await this._authToken()}`;
     }
     return headers;
   },
@@ -140,6 +149,60 @@ const FirestoreRest = {
     });
     await this.deleteDocument("categories", id);
     return true;
+  }
+};
+
+const StorageRest = {
+  async upload(file, path, timeoutMs = 45000) {
+    initFirebase();
+    if (!auth?.currentUser) {
+      throw { code: "unauthenticated", message: "You are not logged in. Please log in again." };
+    }
+
+    const bucket = firebaseConfig.storageBucket;
+    const token = await FirestoreRest._authToken();
+    const url =
+      `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket)}/o` +
+      `?uploadType=media&name=${encodeURIComponent(path)}`;
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": file.type || "image/jpeg"
+        },
+        body: file,
+        signal: controller.signal
+      });
+
+      const text = await res.text();
+      let json = {};
+      if (text) {
+        try { json = JSON.parse(text); } catch { json = { error: { message: text } }; }
+      }
+
+      if (!res.ok) {
+        throw {
+          code: res.status === 403 ? "storage/unauthorized" : "storage/upload-failed",
+          message: json.error?.message || "Image upload failed. Enable Storage in Firebase Console."
+        };
+      }
+
+      const encoded = encodeURIComponent(json.name);
+      const downloadToken = json.downloadTokens?.split(",")[0] || "";
+      return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encoded}?alt=media&token=${downloadToken}`;
+    } catch (err) {
+      if (err.name === "AbortError") {
+        throw { code: "storage/timeout", message: "Image upload timed out. Try a smaller image or paste an image URL instead." };
+      }
+      throw err.code ? err : { code: "storage/upload-failed", message: err.message || "Image upload failed." };
+    } finally {
+      clearTimeout(timer);
+    }
   }
 };
 
@@ -305,11 +368,25 @@ const FirebaseService = {
 
   async uploadImage(file, path) {
     initFirebase();
-    if (!storage) throw { code: "storage/not-configured", message: "Enable Firebase Storage in Console (Build → Storage)." };
     const compressed = await ImageUtils.compress(file);
-    const ref = storage.ref(path);
-    await ref.put(compressed);
-    return await ref.getDownloadURL();
+
+    try {
+      return await StorageRest.upload(compressed, path);
+    } catch (restErr) {
+      if (!storage) throw restErr;
+
+      const uploadTask = storage.ref(path).put(compressed);
+      const result = await Promise.race([
+        uploadTask.then((snap) => snap.ref.getDownloadURL()),
+        new Promise((_, reject) =>
+          setTimeout(
+            () => reject({ code: "storage/timeout", message: "Image upload timed out. Paste an image URL instead." }),
+            30000
+          )
+        )
+      ]);
+      return result;
+    }
   },
 
   async getStats() {

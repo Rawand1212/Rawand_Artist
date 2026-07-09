@@ -44,7 +44,10 @@ const AdminUI = {
       "firestore-blocked": "Firestore SDK blocked. Disable ad blocker (uBlock, AdBlock, Privacy Badger).",
       "failed-precondition": "Firestore index required. Try again or check Firebase Console.",
       "storage/unauthorized": "Storage permission denied. Update Storage rules in Firebase Console.",
-      "storage/not-configured": "Firebase Storage not enabled. Enable it in Firebase Console → Storage."
+      "storage/not-configured": "Firebase Storage not enabled. Enable it in Firebase Console → Storage.",
+      "storage/timeout": "Image upload timed out. Save without images, or paste an image URL.",
+      "storage/upload-failed": "Image upload failed. Enable Firebase Storage or paste an image URL.",
+      "auth/timeout": "Login timed out. Refresh the page and sign in again."
     };
     return messages[code] || err?.message || "Something went wrong. Try again.";
   },
@@ -80,6 +83,7 @@ const AdminUI = {
         close();
       } catch (err) {
         AdminUI.showToast(AdminUI.formatError(err), true);
+      } finally {
         btn.disabled = false;
         btn.textContent = "Save to Store";
       }
@@ -97,10 +101,14 @@ const ImageUpload = {
     container.innerHTML = `
       <div class="image-upload-zone" id="uploadZone">
         <p>📷 Drag & drop images here or click to browse</p>
-        <p style="font-size:0.8rem;margin-top:0.5rem">Images are automatically compressed</p>
+        <p style="font-size:0.8rem;margin-top:0.5rem">Optional — product saves even without images</p>
         <input type="file" id="fileInput" accept="image/*" multiple hidden>
       </div>
-      <div class="image-preview-grid" id="previewGrid"></div>`;
+      <div class="image-preview-grid" id="previewGrid"></div>
+      <div style="display:flex;gap:0.5rem;margin-top:0.75rem;align-items:center">
+        <input type="url" class="form-input" id="imageUrlInput" placeholder="Or paste image URL (https://...)">
+        <button type="button" class="btn btn-secondary btn-sm" id="addUrlBtn">Add URL</button>
+      </div>`;
 
     const zone = container.querySelector("#uploadZone");
     const input = container.querySelector("#fileInput");
@@ -117,29 +125,50 @@ const ImageUpload = {
       zone.classList.remove("dragover");
       this.handleFiles(e.dataTransfer.files, grid);
     });
-    input.addEventListener("change", () => this.handleFiles(input.files, grid));
+    input.addEventListener("change", () => {
+      this.handleFiles(input.files, grid);
+      input.value = "";
+    });
+
+    container.querySelector("#addUrlBtn").addEventListener("click", () => {
+      const urlInput = container.querySelector("#imageUrlInput");
+      const url = urlInput.value.trim();
+      if (!url) return;
+      if (!/^https?:\/\//i.test(url)) {
+        AdminUI.showToast("Image URL must start with http:// or https://", true);
+        return;
+      }
+      this.addPreview(grid, url, true);
+      urlInput.value = "";
+    });
   },
 
   async handleFiles(files, grid) {
     for (const file of files) {
       if (!file.type.startsWith("image/")) continue;
-      const compressed = await ImageUtils.compress(file);
-      this.pendingFiles.push(compressed);
-      const url = URL.createObjectURL(compressed);
-      this.addPreview(grid, url, false);
+      try {
+        const compressed = await ImageUtils.compress(file);
+        const entry = { file: compressed };
+        this.pendingFiles.push(entry);
+        const url = URL.createObjectURL(compressed);
+        this.addPreview(grid, url, false, entry);
+      } catch (err) {
+        AdminUI.showToast("Could not process image: " + (err.message || "unknown error"), true);
+      }
     }
   },
 
-  addPreview(grid, url, isExisting) {
+  addPreview(grid, url, isExisting, fileEntry = null) {
     const div = document.createElement("div");
     div.className = "image-preview";
     div.dataset.url = url;
-    div.dataset.existing = isExisting;
+    div.dataset.existing = String(isExisting);
     div.innerHTML = `<img src="${url}" alt=""><button class="remove-img" type="button">&times;</button>`;
     div.querySelector(".remove-img").addEventListener("click", () => {
-      if (!isExisting) {
-        const idx = this.pendingFiles.findIndex((f) => URL.createObjectURL(f) === url);
+      if (fileEntry) {
+        const idx = this.pendingFiles.indexOf(fileEntry);
         if (idx >= 0) this.pendingFiles.splice(idx, 1);
+        URL.revokeObjectURL(url);
       }
       div.remove();
     });
@@ -153,11 +182,17 @@ const ImageUpload = {
       .map((el) => el.dataset.url);
   },
 
-  async uploadAll(productId) {
+  takePendingFiles() {
+    const files = this.pendingFiles.map((e) => e.file);
+    this.pendingFiles = [];
+    return files;
+  },
+
+  async uploadFiles(files, productId) {
     const urls = [];
-    for (let i = 0; i < this.pendingFiles.length; i++) {
+    for (let i = 0; i < files.length; i++) {
       const url = await FirebaseService.uploadImage(
-        this.pendingFiles[i],
+        files[i],
         `products/${productId}/${Date.now()}_${i}.jpg`
       );
       urls.push(url);
