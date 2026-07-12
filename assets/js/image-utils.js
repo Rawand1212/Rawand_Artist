@@ -32,6 +32,17 @@ const ImageUtils = {
     });
   },
 
+  /** Compress and return a data URL so images work without Firebase Storage. */
+  async toDataUrl(file, maxWidth = 700, quality = 0.55) {
+    const compressed = await this.compress(file, maxWidth, quality);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Could not read image"));
+      reader.readAsDataURL(compressed);
+    });
+  },
+
   lazyLoad() {
     const images = document.querySelectorAll("img[data-src]");
     if ("IntersectionObserver" in window) {

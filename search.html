@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="ckb" dir="rtl" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Search — Rawand Artist</title>
-  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/main.css?v=10">
 </head>
 <body>
   <div id="site-header"></div>
@@ -12,9 +12,9 @@
   <main class="search-page">
     <div class="container">
       <div class="search-hero">
-        <h1 style="text-align:center;margin-bottom:1.5rem">Search Products</h1>
+        <h1 id="searchTitle" style="text-align:center;margin-bottom:1.5rem"></h1>
         <div class="search-wrapper">
-          <input type="search" class="search-input" id="searchInput" placeholder="Search by name, category, or description..." autofocus>
+          <input type="search" class="search-input" id="searchInput" autofocus>
           <div class="search-suggestions" id="searchSuggestions"></div>
         </div>
       </div>
@@ -26,17 +26,21 @@
 
   <div id="site-footer"></div>
 
-  <script src="assets/js/config.js?v=7"></script>
-  <script src="assets/js/demo-data.js?v=7"></script>
-  <script src="firebase/config.js?v=7"></script>
-  <script src="assets/js/image-utils.js?v=7"></script>
-  <script src="assets/js/ui.js?v=7"></script>
-  <script src="assets/js/firebase-service.js?v=7"></script>
-  <script src="assets/js/products.js?v=7"></script>
-  <script src="assets/js/components.js?v=7"></script>
+  <script src="assets/js/config.js?v=10"></script>
+  <script src="assets/js/i18n.js?v=10"></script>
+  <script src="assets/js/demo-data.js?v=10"></script>
+  <script src="firebase/config.js?v=10"></script>
+  <script src="assets/js/image-utils.js?v=10"></script>
+  <script src="assets/js/ui.js?v=10"></script>
+  <script src="assets/js/firebase-service.js?v=10"></script>
+  <script src="assets/js/products.js?v=10"></script>
+  <script src="assets/js/components.js?v=10"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
+      I18N.apply();
       Components.injectLayout("search");
+      document.getElementById("searchTitle").textContent = I18N.t("search");
+      document.getElementById("searchInput").placeholder = I18N.t("searchPlaceholder");
 
       const input = document.getElementById("searchInput");
       const suggestions = document.getElementById("searchSuggestions");

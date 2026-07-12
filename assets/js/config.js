@@ -1,9 +1,10 @@
 const STORE_CONFIG = {
   name: "Rawand Artist",
-  tagline: "Premium Gaming & Digital Art",
+  tagline: "یاری و هونەری دیجیتاڵ",
   telegram: "https://t.me/YOUR_TELEGRAM_USERNAME",
-  currency: "USD",
-  currencySymbol: "$",
+  currency: "IQD",
+  currencySymbol: "د.ع",
   itemsPerPage: 12,
-  demoMode: false // Set false after Firebase is configured
+  demoMode: false,
+  defaultLang: "ku"
 };

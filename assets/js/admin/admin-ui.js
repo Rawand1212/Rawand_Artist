@@ -100,8 +100,8 @@ const ImageUpload = {
   renderZone(container, existingImages = []) {
     container.innerHTML = `
       <div class="image-upload-zone" id="uploadZone">
-        <p>📷 Drag & drop images here or click to browse</p>
-        <p style="font-size:0.8rem;margin-top:0.5rem">Optional — product saves even without images</p>
+        <p>📷 Click or drop photos here</p>
+        <p style="font-size:0.8rem;margin-top:0.5rem">Photos are saved with the product (max 3)</p>
         <input type="file" id="fileInput" accept="image/*" multiple hidden>
       </div>
       <div class="image-preview-grid" id="previewGrid"></div>
@@ -115,7 +115,7 @@ const ImageUpload = {
     const grid = container.querySelector("#previewGrid");
 
     this.pendingFiles = [];
-    existingImages.forEach((url) => this.addPreview(grid, url, true));
+    (existingImages || []).forEach((url) => this.addPreview(grid, url, true));
 
     zone.addEventListener("click", () => input.click());
     zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("dragover"); });
@@ -144,59 +144,44 @@ const ImageUpload = {
   },
 
   async handleFiles(files, grid) {
+    const existingCount = grid.querySelectorAll(".image-preview").length;
+    let added = 0;
     for (const file of files) {
       if (!file.type.startsWith("image/")) continue;
+      if (existingCount + added >= 3) {
+        AdminUI.showToast("Maximum 3 images per product", true);
+        break;
+      }
       try {
-        const compressed = await ImageUtils.compress(file);
-        const entry = { file: compressed };
-        this.pendingFiles.push(entry);
-        const url = URL.createObjectURL(compressed);
-        this.addPreview(grid, url, false, entry);
+        const dataUrl = await ImageUtils.toDataUrl(file);
+        this.addPreview(grid, dataUrl, true);
+        added += 1;
       } catch (err) {
         AdminUI.showToast("Could not process image: " + (err.message || "unknown error"), true);
       }
     }
   },
 
-  addPreview(grid, url, isExisting, fileEntry = null) {
+  addPreview(grid, url, isExisting) {
     const div = document.createElement("div");
     div.className = "image-preview";
     div.dataset.url = url;
-    div.dataset.existing = String(isExisting);
+    div.dataset.existing = "true";
     div.innerHTML = `<img src="${url}" alt=""><button class="remove-img" type="button">&times;</button>`;
-    div.querySelector(".remove-img").addEventListener("click", () => {
-      if (fileEntry) {
-        const idx = this.pendingFiles.indexOf(fileEntry);
-        if (idx >= 0) this.pendingFiles.splice(idx, 1);
-        URL.revokeObjectURL(url);
-      }
-      div.remove();
-    });
+    div.querySelector(".remove-img").addEventListener("click", () => div.remove());
     grid.appendChild(div);
   },
 
   getExistingUrls(grid) {
     if (!grid) return [];
-    return [...grid.querySelectorAll(".image-preview")]
-      .filter((el) => el.dataset.existing === "true")
-      .map((el) => el.dataset.url);
+    return [...grid.querySelectorAll(".image-preview")].map((el) => el.dataset.url).filter(Boolean);
   },
 
   takePendingFiles() {
-    const files = this.pendingFiles.map((e) => e.file);
-    this.pendingFiles = [];
-    return files;
+    return [];
   },
 
-  async uploadFiles(files, productId) {
-    const urls = [];
-    for (let i = 0; i < files.length; i++) {
-      const url = await FirebaseService.uploadImage(
-        files[i],
-        `products/${productId}/${Date.now()}_${i}.jpg`
-      );
-      urls.push(url);
-    }
-    return urls;
+  async uploadFiles() {
+    return [];
   }
 };

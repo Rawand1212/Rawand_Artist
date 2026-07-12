@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="ckb" dir="rtl" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Products — Rawand Artist</title>
-  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/main.css?v=10">
 </head>
 <body>
   <div id="site-header"></div>
@@ -12,8 +12,8 @@
   <main class="section">
     <div class="container">
       <div class="section-header">
-        <h1 id="pageTitle">All Products</h1>
-        <p id="pageSubtitle">Browse our full collection</p>
+        <h1 id="pageTitle"></h1>
+        <p id="pageSubtitle"></p>
       </div>
       <div class="category-pills" id="categoryPills"></div>
       <div class="product-grid" id="productGrid"></div>
@@ -22,16 +22,18 @@
 
   <div id="site-footer"></div>
 
-  <script src="assets/js/config.js?v=7"></script>
-  <script src="assets/js/demo-data.js?v=7"></script>
-  <script src="firebase/config.js?v=7"></script>
-  <script src="assets/js/image-utils.js?v=7"></script>
-  <script src="assets/js/ui.js?v=7"></script>
-  <script src="assets/js/firebase-service.js?v=7"></script>
-  <script src="assets/js/products.js?v=7"></script>
-  <script src="assets/js/components.js?v=7"></script>
+  <script src="assets/js/config.js?v=10"></script>
+  <script src="assets/js/i18n.js?v=10"></script>
+  <script src="assets/js/demo-data.js?v=10"></script>
+  <script src="firebase/config.js?v=10"></script>
+  <script src="assets/js/image-utils.js?v=10"></script>
+  <script src="assets/js/ui.js?v=10"></script>
+  <script src="assets/js/firebase-service.js?v=10"></script>
+  <script src="assets/js/products.js?v=10"></script>
+  <script src="assets/js/components.js?v=10"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
+      I18N.apply();
       Components.injectLayout("products");
 
       const params = new URLSearchParams(window.location.search);
@@ -41,18 +43,16 @@
       const categories = await FirebaseService.getCategories();
       Products.renderCategoryPills(categories, document.getElementById("categoryPills"), categoryId);
 
+      document.getElementById("pageTitle").textContent = I18N.t("allProducts");
+      document.getElementById("pageSubtitle").textContent = I18N.t("allProductsSub");
+
       if (filter === "featured") {
-        document.getElementById("pageTitle").textContent = "Featured Products";
-        document.getElementById("pageSubtitle").textContent = "Hand-picked premium items";
+        document.getElementById("pageTitle").textContent = I18N.t("featured");
       } else if (filter === "new") {
-        document.getElementById("pageTitle").textContent = "New Arrivals";
-        document.getElementById("pageSubtitle").textContent = "Fresh additions to the store";
+        document.getElementById("pageTitle").textContent = I18N.t("newArrivals");
       } else if (categoryId) {
         const cat = categories.find((c) => c.id === categoryId);
-        if (cat) {
-          document.getElementById("pageTitle").textContent = cat.name;
-          document.getElementById("pageSubtitle").textContent = `Browse all ${cat.name.toLowerCase()}`;
-        }
+        if (cat) document.getElementById("pageTitle").textContent = cat.name;
       }
 
       UI.showLoader(document.getElementById("productGrid"));

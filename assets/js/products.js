@@ -2,10 +2,9 @@ const Products = {
   renderCard(product) {
     const img = product.images?.[0] || "assets/images/placeholder.svg";
     const badges = [];
-    if (product.featured) badges.push('<span class="badge badge-featured">Featured</span>');
-    if (product.isNew) badges.push('<span class="badge badge-new">New</span>');
-    if (product.stock <= 0) badges.push('<span class="badge badge-sold">Sold Out</span>');
-    else if (product.stock <= 3) badges.push('<span class="badge badge-low">Low Stock</span>');
+    if (product.featured) badges.push(`<span class="badge badge-featured">${I18N.t("badgeFeatured")}</span>`);
+    if (product.isNew) badges.push(`<span class="badge badge-new">${I18N.t("badgeNew")}</span>`);
+    if (product.stock <= 0) badges.push(`<span class="badge badge-sold">${I18N.t("soldOut")}</span>`);
 
     return `
       <article class="product-card animate-in" data-id="${product.id}">
@@ -26,7 +25,7 @@ const Products = {
   renderGrid(products, container) {
     if (!container) return;
     if (!products.length) {
-      container.innerHTML = `<div class="empty-state"><span class="empty-icon">🔍</span><p>No products found</p></div>`;
+      container.innerHTML = `<div class="empty-state"><span class="empty-icon">🔍</span><p>${I18N.t("noProducts")}</p></div>`;
       return;
     }
     container.innerHTML = products.map((p) => this.renderCard(p)).join("");
@@ -36,7 +35,7 @@ const Products = {
 
   renderCategoryPills(categories, container, activeId = null) {
     if (!container) return;
-    const allPill = `<a href="products.html" class="category-pill ${!activeId ? "active" : ""}">All</a>`;
+    const allPill = `<a href="products.html" class="category-pill ${!activeId ? "active" : ""}">${I18N.t("allProducts")}</a>`;
     const pills = categories
       .map(
         (c) =>
@@ -82,17 +81,15 @@ const Search = {
     );
 
     if (!suggestionsEl) return;
+    if (!products.length && !categories.length) {
+      suggestionsEl.classList.remove("show");
+      return;
+    }
 
-    let html = "";
-    categories.slice(0, 3).forEach((c) => {
-      html += `<a href="products.html?category=${c.id}" class="suggestion-item"><span class="suggestion-icon">${c.icon || "📁"}</span> ${c.name} <span class="suggestion-type">Category</span></a>`;
-    });
-    products.slice(0, 5).forEach((p) => {
-      html += `<a href="product.html?id=${p.id}" class="suggestion-item"><img src="${p.images?.[0] || ""}" alt=""> ${p.name} <span class="suggestion-type">${UI.formatPrice(p.price)}</span></a>`;
-    });
-
-    if (!html) html = `<div class="suggestion-empty">No results for "${query}"</div>`;
-    suggestionsEl.innerHTML = html;
+    suggestionsEl.innerHTML = [
+      ...categories.slice(0, 3).map((c) => `<a href="products.html?category=${c.id}" class="suggestion-item">${c.icon || ""} ${c.name}</a>`),
+      ...products.slice(0, 5).map((p) => `<a href="product.html?id=${p.id}" class="suggestion-item"><img src="${p.images?.[0] || "assets/images/placeholder.svg"}" alt=""><span>${p.name}</span><strong>${UI.formatPrice(p.price)}</strong></a>`)
+    ].join("");
     suggestionsEl.classList.add("show");
   }
 };

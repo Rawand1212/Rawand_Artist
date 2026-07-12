@@ -27,7 +27,8 @@ const Theme = {
 const UI = {
   showLoader(container) {
     if (!container) return;
-    container.innerHTML = `<div class="loader"><div class="loader-spinner"></div><p>Loading...</p></div>`;
+    const text = typeof I18N !== "undefined" ? I18N.t("loading") : "Loading...";
+    container.innerHTML = `<div class="loader"><div class="loader-spinner"></div><p>${text}</p></div>`;
   },
 
   showToast(message, type = "success") {
@@ -43,6 +44,11 @@ const UI = {
   },
 
   formatPrice(price) {
+    const n = Math.round(Number(price) || 0);
+    const formatted = n.toLocaleString("en-US");
+    if (STORE_CONFIG.currency === "IQD") {
+      return `${formatted} ${STORE_CONFIG.currencySymbol}`;
+    }
     return `${STORE_CONFIG.currencySymbol}${Number(price).toFixed(2)}`;
   },
 
