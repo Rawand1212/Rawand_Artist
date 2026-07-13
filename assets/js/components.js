@@ -7,16 +7,16 @@ const Components = {
           <span class="logo-icon">🎮</span>
           <span class="logo-text">${STORE_CONFIG.name}</span>
         </a>
+        <div class="header-actions">
+          <button type="button" class="btn btn-secondary btn-sm lang-toggle" id="langToggle">${I18N.t("langToggle")}</button>
+          <button class="theme-toggle btn-icon" aria-label="Toggle theme">🌙</button>
+          <button class="mobile-menu-btn btn-icon" id="mobileMenuBtn" aria-label="Menu" aria-expanded="false">☰</button>
+        </div>
         <nav class="main-nav" id="mainNav">
           <a href="index.html" class="${activePage === "home" ? "active" : ""}">${I18N.t("home")}</a>
           <a href="products.html" class="${activePage === "products" ? "active" : ""}">${I18N.t("products")}</a>
           <a href="search.html" class="${activePage === "search" ? "active" : ""}">${I18N.t("search")}</a>
         </nav>
-        <div class="header-actions">
-          <button type="button" class="btn btn-secondary btn-sm lang-toggle" id="langToggle">${I18N.t("langToggle")}</button>
-          <button class="theme-toggle btn-icon" aria-label="Toggle theme">🌙</button>
-          <button class="mobile-menu-btn btn-icon" id="mobileMenuBtn" aria-label="Menu">☰</button>
-        </div>
       </div>
     </header>`;
   },
@@ -65,7 +65,10 @@ const Components = {
     document.getElementById("langToggle")?.addEventListener("click", () => I18N.toggle());
 
     document.getElementById("mobileMenuBtn")?.addEventListener("click", () => {
-      document.getElementById("mainNav")?.classList.toggle("open");
+      const nav = document.getElementById("mainNav");
+      const btn = document.getElementById("mobileMenuBtn");
+      const open = nav?.classList.toggle("open");
+      if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
     });
   }
 };
