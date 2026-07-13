@@ -104,21 +104,21 @@ git init
 git add .
 git commit -m "Initial Rawand Artist store"
 git branch -M main
-git remote add origin https://github.com/YOUR_USERNAME/Rawand_Artist.git
+git remote add origin https://github.com/YOUR_USERNAME/brwsk01.git
 git push -u origin main
 ```
 
 In your GitHub repo:
 1. Go to **Settings → Pages**
 2. Source: **Deploy from branch** → `main` → `/ (root)`
-3. Your store will be live at `https://YOUR_USERNAME.github.io/Rawand_Artist/`
+3. Your store will be live at `https://YOUR_USERNAME.github.io/brwsk01/`
 
 > Add your GitHub Pages URL to Firebase **Authorized domains** (Authentication → Settings).
 
 ## Project Structure
 
 ```
-Rawand_Artist/
+brwsk01/
 ├── index.html              # Homepage
 ├── products.html           # Product listing
 ├── product.html            # Product detail
