@@ -1,5 +1,5 @@
 const STORE_CONFIG = {
-  name: "brwsk01",
+  name: "BRWSK01",
   tagline: "یاری و هونەری دیجیتاڵ",
   phone: "07507161414",
   telegram: "https://t.me/brwsk01",

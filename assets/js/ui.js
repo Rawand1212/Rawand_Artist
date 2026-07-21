@@ -3,8 +3,7 @@ const Theme = {
 
   init() {
     const saved = localStorage.getItem(this.STORAGE_KEY);
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    this.set(saved || (prefersDark ? "dark" : "light"));
+    this.set(saved || "light");
 
     document.querySelectorAll(".theme-toggle").forEach((btn) => {
       btn.addEventListener("click", () => {
