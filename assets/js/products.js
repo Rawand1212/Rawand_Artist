@@ -1,16 +1,21 @@
 const Products = {
+  downloadIcon() {
+    return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+  },
+
   renderCard(product) {
     const img = product.images?.[0] || "assets/images/placeholder.svg";
     const badges = [];
     if (product.featured) badges.push(`<span class="badge badge-featured">${I18N.t("badgeFeatured")}</span>`);
     if (product.isNew) badges.push(`<span class="badge badge-new">${I18N.t("badgeNew")}</span>`);
     if (product.stock <= 0) badges.push(`<span class="badge badge-sold">${I18N.t("soldOut")}</span>`);
+    const safeName = String(product.name || "product").replace(/"/g, "&quot;");
 
     return `
       <article class="product-card animate-in" data-id="${product.id}">
         <a href="product.html?id=${product.id}" class="product-card-link">
           <div class="product-card-image">
-            <img data-src="${img}" alt="${product.name}" class="product-img">
+            <img data-src="${img}" alt="${safeName}" class="product-img">
             <div class="product-badges">${badges.join("")}</div>
           </div>
           <div class="product-card-body">
@@ -18,7 +23,25 @@ const Products = {
             <h3 class="product-name">${product.name}</h3>
           </div>
         </a>
+        <button type="button" class="btn-download" data-download-name="${safeName}.jpg" title="${I18N.t("download")}" aria-label="${I18N.t("download")}">
+          ${this.downloadIcon()}
+          <span>${I18N.t("download")}</span>
+        </button>
       </article>`;
+  },
+
+  bindDownloadButtons(container) {
+    if (!container) return;
+    container.querySelectorAll(".btn-download").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const card = btn.closest(".product-card");
+        const imgEl = card?.querySelector(".product-img");
+        const url = imgEl?.src || imgEl?.dataset.src || "";
+        UI.downloadImage(url, btn.dataset.downloadName || "product.jpg");
+      });
+    });
   },
 
   renderGrid(products, container) {
@@ -30,6 +53,7 @@ const Products = {
     container.innerHTML = products.map((p) => this.renderCard(p)).join("");
     ImageUtils.lazyLoad();
     UI.animateOnScroll();
+    this.bindDownloadButtons(container);
   },
 
   renderCategoryPills(categories, container, activeId = null) {

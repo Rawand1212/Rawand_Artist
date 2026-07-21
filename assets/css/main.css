@@ -279,10 +279,34 @@ h3 { font-size: 1.15rem; }
 .badge-low { background: var(--warning); color: #fff; }
 .badge-sold { background: var(--danger); color: #fff; }
 
-.product-card-body { padding: 0.65rem 0.7rem 0.8rem; }
+.product-card-body { padding: 0.65rem 0.7rem 0.5rem; }
 .product-category { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .product-name { margin: 0.2rem 0 0; font-family: var(--font-body); font-weight: 600; font-size: 0.92rem; line-height: 1.3; }
 .product-price { display: none; }
+
+.btn-download {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  padding: 0.55rem 0.5rem;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+.btn-download:hover {
+  background: var(--accent);
+  color: #fff;
+}
+[data-theme="dark"] .btn-download:hover { color: #141414; }
+.btn-download svg { flex-shrink: 0; }
 
 /* Product Detail */
 .product-detail { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; padding: 2rem 0 3rem; }
@@ -448,7 +472,7 @@ h3 { font-size: 1.15rem; }
 
   .product-card { border-radius: 4px; }
   .product-card-image { aspect-ratio: 1268 / 1600; }
-  .product-card-body { padding: 0.4rem 0.5rem 0.55rem; }
+  .product-card-body { padding: 0.4rem 0.5rem 0.4rem; }
   .product-category {
     font-size: 0.6rem;
     display: -webkit-box;
@@ -465,6 +489,13 @@ h3 { font-size: 1.15rem; }
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
+
+  .btn-download {
+    padding: 0.45rem 0.35rem;
+    font-size: 0.7rem;
+    gap: 0.25rem;
+  }
+  .btn-download svg { width: 14px; height: 14px; }
 
   .category-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

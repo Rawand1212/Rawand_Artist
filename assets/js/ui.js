@@ -70,6 +70,36 @@ const UI = {
     }
   },
 
+  async downloadImage(url, filename = "product.jpg") {
+    if (!url || url.includes("placeholder")) {
+      this.showToast(typeof I18N !== "undefined" ? I18N.t("noImage") : "No image", "error");
+      return;
+    }
+
+    try {
+      let href = url;
+      let revoke = null;
+
+      if (!url.startsWith("data:")) {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("fetch failed");
+        const blob = await res.blob();
+        href = URL.createObjectURL(blob);
+        revoke = href;
+      }
+
+      const a = document.createElement("a");
+      a.href = href;
+      a.download = filename.replace(/[^\w.\-]+/g, "_") || "product.jpg";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      if (revoke) setTimeout(() => URL.revokeObjectURL(revoke), 1500);
+    } catch {
+      window.open(url, "_blank", "noopener");
+    }
+  },
+
   async shareProduct(product) {
     const url = this.getProductUrl(product.id);
     const data = { title: product.name, text: `Check out ${product.name}`, url };
