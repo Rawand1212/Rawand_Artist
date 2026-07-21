@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Products — brwsk01</title>
-  <link rel="stylesheet" href="assets/css/main.css?v=14">
+  <link rel="stylesheet" href="assets/css/main.css?v=15">
 </head>
 <body>
   <div id="site-header"></div>
@@ -22,15 +22,15 @@
 
   <div id="site-footer"></div>
 
-  <script src="assets/js/config.js?v=14"></script>
-  <script src="assets/js/i18n.js?v=14"></script>
-  <script src="assets/js/demo-data.js?v=14"></script>
-  <script src="firebase/config.js?v=14"></script>
-  <script src="assets/js/image-utils.js?v=14"></script>
-  <script src="assets/js/ui.js?v=14"></script>
-  <script src="assets/js/firebase-service.js?v=14"></script>
-  <script src="assets/js/products.js?v=14"></script>
-  <script src="assets/js/components.js?v=14"></script>
+  <script src="assets/js/config.js?v=15"></script>
+  <script src="assets/js/i18n.js?v=15"></script>
+  <script src="assets/js/demo-data.js?v=15"></script>
+  <script src="firebase/config.js?v=15"></script>
+  <script src="assets/js/image-utils.js?v=15"></script>
+  <script src="assets/js/ui.js?v=15"></script>
+  <script src="assets/js/firebase-service.js?v=15"></script>
+  <script src="assets/js/products.js?v=15"></script>
+  <script src="assets/js/components.js?v=15"></script>
   <script>
     document.addEventListener("DOMContentLoaded", async () => {
       I18N.apply();
@@ -38,31 +38,22 @@
 
       const params = new URLSearchParams(window.location.search);
       const categoryId = params.get("category");
-      const filter = params.get("filter");
 
       const categories = await FirebaseService.getCategories();
-      Products.renderCategoryPills(categories, document.getElementById("categoryPills"), categoryId);
 
-      document.getElementById("pageTitle").textContent = I18N.t("allProducts");
-      document.getElementById("pageSubtitle").textContent = I18N.t("allProductsSub");
-
-      if (filter === "featured") {
-        document.getElementById("pageTitle").textContent = I18N.t("featured");
-      } else if (filter === "new") {
-        document.getElementById("pageTitle").textContent = I18N.t("newArrivals");
-      } else if (categoryId) {
-        const cat = categories.find((c) => c.id === categoryId);
-        if (cat) document.getElementById("pageTitle").textContent = cat.name;
+      if (!categoryId) {
+        window.location.replace("index.html");
+        return;
       }
 
+      Products.renderCategoryPills(categories, document.getElementById("categoryPills"), categoryId);
+
+      const cat = categories.find((c) => c.id === categoryId);
+      document.getElementById("pageTitle").textContent = cat ? cat.name : I18N.t("products");
+      document.getElementById("pageSubtitle").textContent = I18N.t("allProductsSub");
+
       UI.showLoader(document.getElementById("productGrid"));
-
-      const filters = {};
-      if (categoryId) filters.categoryId = categoryId;
-      if (filter === "featured") filters.featured = true;
-      if (filter === "new") filters.isNew = true;
-
-      const products = await FirebaseService.getProducts(filters);
+      const products = await FirebaseService.getProducts({ categoryId });
       Products.renderGrid(products, document.getElementById("productGrid"));
     });
   </script>

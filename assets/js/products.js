@@ -16,7 +16,6 @@ const Products = {
           <div class="product-card-body">
             <span class="product-category">${product.categoryName || ""}</span>
             <h3 class="product-name">${product.name}</h3>
-            <p class="product-price">${UI.formatPrice(product.price)}</p>
           </div>
         </a>
       </article>`;
@@ -35,14 +34,31 @@ const Products = {
 
   renderCategoryPills(categories, container, activeId = null) {
     if (!container) return;
-    const allPill = `<a href="products.html" class="category-pill ${!activeId ? "active" : ""}">${I18N.t("allProducts")}</a>`;
     const pills = categories
       .map(
         (c) =>
           `<a href="products.html?category=${c.id}" class="category-pill ${activeId === c.id ? "active" : ""}">${c.icon || ""} ${c.name}</a>`
       )
       .join("");
-    container.innerHTML = allPill + pills;
+    container.innerHTML = pills;
+  },
+
+  renderCategoryGrid(categories, container) {
+    if (!container) return;
+    if (!categories.length) {
+      container.innerHTML = `<div class="empty-state"><p>${I18N.t("noProducts")}</p></div>`;
+      return;
+    }
+    container.innerHTML = categories
+      .map(
+        (c) => `
+      <a href="products.html?category=${c.id}" class="category-card animate-in">
+        <span class="category-card-icon">${c.icon || "📁"}</span>
+        <span class="category-card-name">${c.name}</span>
+      </a>`
+      )
+      .join("");
+    UI.animateOnScroll();
   }
 };
 
@@ -88,7 +104,7 @@ const Search = {
 
     suggestionsEl.innerHTML = [
       ...categories.slice(0, 3).map((c) => `<a href="products.html?category=${c.id}" class="suggestion-item">${c.icon || ""} ${c.name}</a>`),
-      ...products.slice(0, 5).map((p) => `<a href="product.html?id=${p.id}" class="suggestion-item"><img src="${p.images?.[0] || "assets/images/placeholder.svg"}" alt=""><span>${p.name}</span><strong>${UI.formatPrice(p.price)}</strong></a>`)
+      ...products.slice(0, 5).map((p) => `<a href="product.html?id=${p.id}" class="suggestion-item"><img src="${p.images?.[0] || "assets/images/placeholder.svg"}" alt=""><span>${p.name}</span></a>`)
     ].join("");
     suggestionsEl.classList.add("show");
   }
