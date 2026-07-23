@@ -1,10 +1,17 @@
 const AdminUI = {
   sidebar(activePage) {
     return `
+    <button type="button" class="admin-menu-btn" id="adminMenuBtn" aria-label="Open menu">☰</button>
+    <div class="admin-sidebar-backdrop" id="adminSidebarBackdrop"></div>
     <aside class="admin-sidebar" id="adminSidebar">
       <div class="sidebar-brand">
-        <h2>BRWSK01</h2>
-        <span>Admin Panel</span>
+        <div class="sidebar-brand-row">
+          <div>
+            <h2>BRWSK01</h2>
+            <span>Admin Panel</span>
+          </div>
+          <button type="button" class="admin-sidebar-close" id="adminSidebarClose" aria-label="Close menu">&times;</button>
+        </div>
       </div>
       <nav class="sidebar-nav">
         <a href="dashboard.html" class="${activePage === "dashboard" ? "active" : ""}"><span class="nav-icon">📊</span> Dashboard</a>
@@ -24,6 +31,26 @@ const AdminUI = {
       layout.insertAdjacentHTML("afterbegin", this.sidebar(activePage));
     }
     document.getElementById("logoutBtn")?.addEventListener("click", () => AdminAuth.logout());
+
+    const sidebar = document.getElementById("adminSidebar");
+    const backdrop = document.getElementById("adminSidebarBackdrop");
+    const openBtn = document.getElementById("adminMenuBtn");
+    const closeBtn = document.getElementById("adminSidebarClose");
+
+    const openMenu = () => {
+      sidebar?.classList.add("open");
+      backdrop?.classList.add("open");
+      document.body.classList.add("admin-menu-open");
+    };
+    const closeMenu = () => {
+      sidebar?.classList.remove("open");
+      backdrop?.classList.remove("open");
+      document.body.classList.remove("admin-menu-open");
+    };
+
+    openBtn?.addEventListener("click", openMenu);
+    closeBtn?.addEventListener("click", closeMenu);
+    backdrop?.addEventListener("click", closeMenu);
   },
 
   showToast(message, isError = false) {
